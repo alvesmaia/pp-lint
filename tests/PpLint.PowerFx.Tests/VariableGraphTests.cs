@@ -215,3 +215,41 @@ public class VariableGraphTests
         Assert.Single(graph.Definitions);
     }
 }
+
+public class VariableGraphCacheTests
+{
+    private static SourceLocation Loc(string? s) => new("a.msapp", "Controls/1.json", s, 0, 0);
+
+    private static CanvasApp AppWith(string script)
+    {
+        var screen = new Control { Name = "scrA", TemplateName = "screen", IsScreen = true, Location = Loc("scrA") };
+        var button = new Control { Name = "btnA", TemplateName = "button", Location = Loc("btnA") };
+        button.Properties.Add(new PowerFxProperty("OnSelect", script, Loc("btnA.OnSelect")));
+        screen.AddChild(button);
+
+        var app = new CanvasApp { Name = "App", Location = Loc(null) };
+        app.Screens.Add(screen);
+        return app;
+    }
+
+    [Fact]
+    public void SameAppReturnsTheSameGraph()
+    {
+        // Oito regras pedem o grafo do mesmo app na mesma execução; reconstruir
+        // toda vez levava um app de 2.279 fórmulas de 1,6 s para 9 s.
+        var app = AppWith("Set(varTotal, 1)");
+
+        Assert.Same(VariableGraph.Build(app), VariableGraph.Build(app));
+    }
+
+    [Fact]
+    public void DifferentAppsGetDifferentGraphs()
+    {
+        var primeiro = VariableGraph.Build(AppWith("Set(varA, 1)"));
+        var segundo = VariableGraph.Build(AppWith("Set(varB, 1)"));
+
+        Assert.NotSame(primeiro, segundo);
+        Assert.Equal(["varA"], primeiro.Definitions.Select(d => d.Name));
+        Assert.Equal(["varB"], segundo.Definitions.Select(d => d.Name));
+    }
+}

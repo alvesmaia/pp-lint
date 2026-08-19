@@ -52,7 +52,18 @@ public sealed class VariableGraph
     public IReadOnlyList<string> ScreensReading(string name) =>
         _readsByScreen.TryGetValue(name, out var screens) ? screens.ToList() : [];
 
-    public static VariableGraph Build(CanvasApp app)
+    /// <summary>
+    /// Construir o grafo custa o parse de todas as fórmulas do app, e oito regras
+    /// pedem o mesmo grafo na mesma execução — sem cache, um app de 2.279 fórmulas
+    /// passava de 1,6 s para 9 s. A tabela é por referência de app e não impede
+    /// coleta de lixo; o IR é imutável depois da extração, então o valor não envelhece.
+    /// </summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<CanvasApp, VariableGraph> Cache = new();
+
+    public static VariableGraph Build(CanvasApp app) =>
+        Cache.GetValue(app, BuildUncached);
+
+    private static VariableGraph BuildUncached(CanvasApp app)
     {
         var resolver = SymbolResolver.Build(app);
         var definitions = new Dictionary<string, VariableDefinition>(StringComparer.OrdinalIgnoreCase);
