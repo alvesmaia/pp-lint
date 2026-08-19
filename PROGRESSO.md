@@ -1,66 +1,81 @@
-# pp-lint — Progresso da Fase 1
+# pp-lint — Progresso
 
-Plano: `docs/superpowers/plans/2026-08-18-pp-lint-fase-1.md`
 Spec: `docs/superpowers/specs/2026-08-18-pp-lint-design.md`
 
-**Fase 1 concluída** — 17 de 17 tasks, 173 testes verdes (170 aprovados + 3 pulados
-por falta do fixture real).
+## Fase 1 — concluída
 
-| # | Task | Status | Testes |
-|---|------|--------|--------|
-| 1 | Scaffolding da solução e tipos de diagnóstico | ✅ | 6 |
-| 2 | Parser de argumentos do CLI | ✅ | 9 |
-| 3 | Leitura de artefatos (zip e pasta) | ✅ | 9 |
-| 4 | Modelo de domínio (IR) | ✅ | 5 |
-| 5 | MsappExtractor | ✅ | 9 |
-| 6 | FlowExtractor | ✅ | 11 |
-| 7 | SolutionExtractor e ProjectLoader | ✅ | 11 |
-| 8 | Parser de Power Fx e percurso de AST | ✅ | 11 |
-| 9 | Motor de regras | ✅ | 9 |
-| 10 | Índice de conformidade | ✅ | 9 |
-| 11 | Regras NM010 e NM011 (nomenclatura de controles) | ✅ | 16 |
-| 12 | Grafo de variáveis e regra PF101 | ✅ | 16 |
-| 13 | Regra PF110 (condição constante) | ✅ | 10 |
-| 14 | Regra FL201 (variável de fluxo não usada) | ✅ | 10 |
-| 15 | Relatório de terminal e comando check | ✅ | 10 |
-| 16 | Robustez, teste ponta a ponta e contrato do catálogo | ✅ | 19 |
-| 17 | Validação contra artefato real | ⏸ | 3 pulados |
+17 tasks. Núcleo do linter: IR, extractors, motor de regras, índice de
+conformidade, relatório de terminal e 5 regras piloto. Validada contra 4 canvas
+apps reais da Microsoft, o que revelou dois defeitos que os testes sintéticos não
+pegavam (controles gerados pelo Studio e caminho das data sources).
 
-Total por projeto: Core 29 · PowerFx 21 · Extractors 40 · Rules 50 · Cli 30.
+Plano: `docs/superpowers/plans/2026-08-18-pp-lint-fase-1.md`.
 
-## Desvios do plano decididos durante a execução
+## Fase 2a — concluída
 
-1. **`net10.0` em vez de `net8.0`.** Os templates do SDK 10 instalado não oferecem
-   `net8.0`, e o .NET 8 sai de suporte em novembro de 2026. O .NET 10 é o LTS atual.
-2. **`nuget.org` registrado como fonte.** A máquina não tinha nenhuma fonte NuGet
-   configurada. Reverter com `dotnet nuget remove source nuget.org`.
-3. **Sem `InvariantGlobalization`.** O relatório formata percentuais em pt-BR
-   (vírgula decimal); a globalização invariante quebraria isso silenciosamente.
-4. **Parser do Power Fx com cultura invariante e `AllowsSideEffects`.** Descoberto
-   no spike da Task 8: sem isso, em máquina pt-BR o separador de argumentos vira `;`
-   e praticamente toda fórmula do `.msapp` (que guarda `InvariantScript`, com vírgula)
-   seria reportada como erro de sintaxe. `AllowsSideEffects` habilita o encadeamento
-   com `;` das propriedades de comportamento.
-5. **`Console.OutputEncoding = UTF8`.** Sem isso a acentuação das mensagens em
-   português sai corrompida no console do Windows — só aparece no binário publicado,
-   nunca nos testes.
-6. **`PublishTrimmed` desativado.** O motor descobre regras por reflexão e o trimmer
-   não consegue provar que os tipos sobrevivem (IL2026/IL2067), quebrando a compilação.
-   A compressão single-file reduz o binário de 83 MB para 40 MB. Reduzir mais exigiria
-   trocar a descoberta por um registro explícito de regras — previsto para a fase de release.
-7. **`CallNode.Args.ChildNodes`**, não `.Children`, no pacote `Microsoft.PowerFx.Core` 1.8.1.
+Configuração e supressão. 10 tasks.
 
-## Correções de testes durante a execução
+| # | Task | Status |
+|---|------|--------|
+| 1 | Descrição da ação de fluxo | ✅ |
+| 2 | Índice de supressões | ✅ |
+| 3 | Motor aplica supressão | ✅ |
+| 4 | Presets de nomenclatura | ✅ |
+| 5 | Leitura do arquivo TOML | ✅ |
+| 6 | Resolver de configuração | ✅ |
+| 7 | Seleção de regras e ignores por artefato | ✅ |
+| 8 | Descoberta do arquivo de configuração | ✅ |
+| 9 | Integração no CLI | ✅ |
+| 10 | Documentação e validação contra os apps reais | ✅ |
 
-- `CorruptZip`: o teste esperava "inválido", a mensagem diz "não é um pacote zip válido".
-- `Check_Quiet`: o teste exigia ausência do ID da regra, mas `--quiet` mantém o resumo
-  com as ocorrências por regra — passou a verificar a ausência do achado detalhado.
+Plano: `docs/superpowers/plans/2026-08-19-pp-lint-fase-2a.md`.
 
-## Pendência que depende de você
+### Resultado medido no app real
 
-A **Task 17** precisa de uma solução `.zip` exportada real, com dados anonimizados,
-em `tests/fixtures/solucao-exemplo.zip`. Os três testes ficam pulados até lá.
+O `chess-real.msapp` nomeia controles como `ButtonCreateGame`. Trocar o preset
+para o que corresponde à convenção dele:
 
-Até que isso rode, os extractors estão validados apenas contra artefatos sintéticos
-construídos a partir da documentação do formato. É o maior risco remanescente da
-fase: se a estrutura de um `.msapp` real divergir do esperado, o linter não acha nada.
+| | camel-prefix | pascal-type |
+|---|---|---|
+| Avisos NM011 | 129 | 19 |
+| Conformidade de nomenclatura | 77,9% | 95,4% |
+| Conformidade geral | 95,7% | 99,0% |
+| Erros reais (NM010) | 3 | 3 |
+
+Os erros sobrevivem, o ruído some. Os 19 avisos restantes são inconsistências
+reais do próprio app — `LblAppName1` onde todo o resto usa `Label...`.
+
+### Desvio de API encontrado na execução
+
+O plano supunha `Toml.ToModel`; o Tomlyn 2.10.1 usa
+`TomlSerializer.Deserialize<TomlTable>` e lança `TomlException`. O plano foi
+corrigido para refletir a API real.
+
+## Próximas fases
+
+- **2b** — catálogo NM e PF completo, grafo de variáveis de contexto e coleções.
+- **2c** — formatos JSON e SARIF, `explain` com documentação, `inspect`, índice
+  por artefato.
+- **Release** — baseline, benchmark, binários públicos.
+
+## Pendência que depende do dono do projeto
+
+Uma solução `.zip` exportada real em `tests/fixtures/solucao-exemplo.zip`. O caminho
+de solução exportada — `solution.xml`, tabelas Dataverse, cloud flows — segue
+validado apenas contra fixtures sintéticos, e todo o catálogo `FL*` da Fase 2b
+depende dele. Dois testes ficam pulados até lá.
+
+## Decisões de ambiente
+
+1. **`net10.0`**, não `net8.0`: os templates do SDK instalado não oferecem net8.0,
+   e o .NET 8 sai de suporte em novembro de 2026.
+2. **`nuget.org` registrado** na máquina, que não tinha fonte NuGet configurada.
+   Reverter com `dotnet nuget remove source nuget.org`.
+3. **Sem `InvariantGlobalization`**: o relatório formata percentuais em pt-BR.
+4. **`Console.OutputEncoding = UTF8`**: sem isso a acentuação sai corrompida no
+   console do Windows — só aparece no binário publicado.
+5. **`PublishTrimmed` desativado**: o motor descobre regras por reflexão e o
+   trimmer quebra a compilação. A compressão reduz o binário de 83 MB para 40 MB.
+6. **Não crie `pp-lint.toml` na raiz deste repositório** — só o
+   `pp-lint.example.toml`. Um teste de integração verifica o comportamento na
+   ausência de configuração e falharia sem nada ter quebrado no produto.

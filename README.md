@@ -88,6 +88,100 @@ A segunda é a mais séria: um prefixo de outro tipo costuma ser copiar-colar de
 controle seguido de troca de tipo sem renomear, e faz quem lê a fórmula depois
 acreditar num tipo que não existe mais.
 
+## Configuração
+
+O pp-lint procura `pp-lint.toml` no diretório atual e nos ancestrais. Sem arquivo,
+usa o preset `camel-prefix` e avisa uma vez qual está em uso. Veja
+`pp-lint.example.toml` para um arquivo comentado.
+
+```toml
+[pp-lint]
+preset = "pascal-type"
+ignore = ["NM011"]
+fail-on = "warning"
+```
+
+**Presets de nomenclatura.** Impor uma régua única faz o linter reclamar de apps
+bem escritos que apenas seguem outro padrão. Escolha o que corresponde à sua
+convenção:
+
+| Preset | Controles | Variáveis |
+|---|---|---|
+| `camel-prefix` | `btnSalvar`, `lblTitulo` | `varTotal` |
+| `pascal-type` | `ButtonSalvar`, `LabelTitulo` | `VarTotal` |
+
+O efeito é grande. No app real usado para validar o projeto, que nomeia como
+`ButtonCreateGame`:
+
+| | camel-prefix | pascal-type |
+|---|---|---|
+| Avisos de prefixo | 129 | 19 |
+| Conformidade de nomenclatura | 77,9% | 95,4% |
+| Erros reais encontrados | 3 | 3 |
+
+Os 3 erros sobrevivem à troca — o que some é o ruído de comparar o app com uma
+convenção que ele nunca adotou. Os 19 avisos restantes são inconsistências
+verdadeiras do próprio app (`LblAppName1` onde todo o resto usa `Label...`).
+
+Precedência: preset → `pp-lint.toml` → flags de linha de comando.
+
+Também dá para escolher regras sem arquivo nenhum:
+
+```bash
+pp-lint check App.msapp --select NM --ignore NM011
+pp-lint check App.msapp --config ../equipe/pp-lint.toml
+```
+
+`--select` e `--ignore` aceitam ID (`PF101`) ou categoria inteira (`PF`), separados
+por vírgula. `--ignore` sempre vence `--select`.
+
+Uma lista passada na linha de comando **substitui** a do arquivo, não soma. Se o
+`pp-lint.toml` tem `ignore = ["PF125"]` e você roda `--ignore NM011`, apenas NM011
+é ignorada naquela execução — PF125 volta a valer. É deliberado (a flag diz
+exatamente o que você quer naquela vez), mas surpreende se você esperava união.
+
+## Silenciar um achado
+
+Em Power Fx, um comentário na própria fórmula:
+
+```powerapps
+// pp-lint: disable=PF101
+Set(varTemporaria, 1)
+```
+
+Em fluxos, JSON não aceita comentário — use o campo **descrição** da ação:
+
+```
+pp-lint: disable=FL201
+```
+
+A diretiva vale para o controle ou a ação onde aparece, e aceita vários IDs
+separados por vírgula.
+
+**Suprimir tira o achado do relatório, não o débito da nota.** O item continua
+contando como violação no índice de conformidade — silenciar tudo mostra 0%, não
+100%. Isso é deliberado: se o alvo saísse da conta, `(v−1)/(t−1)` seria sempre
+maior que `v/t` e a nota subiria a cada supressão, tornando a métrica inútil.
+
+Para quando a regra genuinamente não se aplica — e não deve pesar na nota — use
+`ignore` (regra inteira) ou `per-artifact-ignores` (por artefato).
+
+Para desligar uma regra inteira, use `ignore` no TOML ou `--ignore NM011`. Para
+excluir artefatos específicos:
+
+```toml
+[pp-lint.per-artifact-ignores]
+"**/Legado*.msapp" = ["NM010", "NM011"]
+```
+
+**Limitação atual:** o glob é comparado com o caminho que você passou na linha de
+comando, não com cada arquivo analisado. Ele funciona ao apontar o `.msapp`
+diretamente (`pp-lint check apps/LegadoVendas.msapp`), mas **não** filtra apps
+individuais dentro de uma solução `.zip` nem ao rodar sobre um diretório — nesses
+casos o caminho comparado é o do `.zip` ou da pasta. Para excluir um app dentro de
+uma solução, use supressão inline por enquanto. Filtro por artefato analisado está
+previsto para a Fase 2c.
+
 ## Garantias
 
 - **Somente leitura.** O linter nunca escreve no artefato analisado. Não existe

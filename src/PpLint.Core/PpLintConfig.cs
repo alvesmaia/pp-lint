@@ -61,6 +61,19 @@ public sealed record PpLintConfig
     public IReadOnlyDictionary<string, Severity> SeverityOverrides { get; init; } =
         new Dictionary<string, Severity>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Regras a executar; vazio significa todas. Aceita ID (PF101) ou prefixo (PF).</summary>
+    public IReadOnlySet<string> Select { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Glob do artefato para as regras que ele não deve receber.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> PerArtifactIgnores { get; init; } =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
+    /// <summary>Severidade a partir da qual o processo termina com código 1.</summary>
+    public Severity FailOn { get; init; } = Severity.Error;
+
+    /// <summary>Nome do preset de nomenclatura em vigor, para exibição e diagnóstico.</summary>
+    public string PresetName { get; init; } = "camel-prefix";
+
     public NamingConfig Naming { get; init; } = new();
 
     public static PpLintConfig Default { get; } = new();

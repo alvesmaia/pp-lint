@@ -145,3 +145,61 @@ public class SolutionExtractorTests
         Assert.Single(project.Flows);
     }
 }
+
+public class NestedAppIdentityTests
+{
+    private const string SolutionXml = """
+    <ImportExportXml><SolutionManifest><UniqueName>S</UniqueName><Version>1.0</Version>
+    <Managed>0</Managed><Publisher><CustomizationPrefix>cts</CustomizationPrefix></Publisher>
+    </SolutionManifest></ImportExportXml>
+    """;
+
+    private const string Controls = """
+    {
+      "TopParent": {
+        "Name": "scrHome",
+        "Template": { "Name": "screen" },
+        "Rules": [ { "Property": "OnVisible", "InvariantScript": "Set(varX, 1)" } ],
+        "Children": []
+      }
+    }
+    """;
+
+    [Fact]
+    public void EntryPathsOfNestedAppsAreDistinct()
+    {
+        // Dois apps na mesma solução têm Controls/1.json cada um. Sem qualificar
+        // a entrada com o app, uma diretiva de supressão em um silencia o outro.
+        var msapp = TestZip.Create(("Controls/1.json", Controls));
+        var solucao = TestZip.CreateNested("CanvasApps/AppVendas.msapp", msapp, ("solution.xml", SolutionXml));
+
+        // acrescenta um segundo app ao mesmo zip
+        var segundo = TestZip.CreateNested("CanvasApps/AppCompras.msapp", msapp, ("solution.xml", SolutionXml));
+
+        using var src1 = ArtifactSourceFactory.Open(solucao);
+        var p1 = new PowerPlatformProject { SourcePath = solucao };
+        SolutionExtractor.Populate(src1, p1);
+
+        using var src2 = ArtifactSourceFactory.Open(segundo);
+        var p2 = new PowerPlatformProject { SourcePath = segundo };
+        SolutionExtractor.Populate(src2, p2);
+
+        var entrada1 = p1.Apps[0].AllControls().First().Location.EntryPath;
+        var entrada2 = p2.Apps[0].AllControls().First().Location.EntryPath;
+
+        Assert.Contains("AppVendas", entrada1);
+        Assert.Contains("AppCompras", entrada2);
+        Assert.NotEqual(entrada1, entrada2);
+    }
+
+    [Fact]
+    public void StandaloneAppKeepsPlainEntryPath()
+    {
+        var msapp = TestZip.Create(("Controls/1.json", Controls));
+        using var src = ArtifactSourceFactory.Open(msapp);
+
+        var app = MsappExtractor.Extract(src, "App.msapp", "App");
+
+        Assert.Equal("Controls/1.json", app.AllControls().First().Location.EntryPath);
+    }
+}

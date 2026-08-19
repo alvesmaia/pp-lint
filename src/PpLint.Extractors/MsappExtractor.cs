@@ -11,7 +11,16 @@ namespace PpLint.Extractors;
 /// </summary>
 public static class MsappExtractor
 {
-    public static CanvasApp Extract(IArtifactSource source, string artifactPath, string appName)
+    /// <summary>
+    /// <paramref name="entryPrefix"/> qualifica as entradas quando o app vem de
+    /// dentro de uma solução: sem isso, dois apps da mesma solução teriam
+    /// Controls/1.json idêntico e uma diretiva de supressão em um silenciaria o outro.
+    /// </summary>
+    public static CanvasApp Extract(
+        IArtifactSource source,
+        string artifactPath,
+        string appName,
+        string? entryPrefix = null)
     {
         var app = new CanvasApp
         {
@@ -21,12 +30,12 @@ public static class MsappExtractor
 
         foreach (var entry in ControlEntries(source))
         {
-            var screen = TryReadScreen(source, artifactPath, entry);
+            var screen = TryReadScreen(source, artifactPath, entry, entryPrefix);
             if (screen is not null)
                 app.Screens.Add(screen);
         }
 
-        ReadAppProperties(source, artifactPath, app);
+        ReadAppProperties(source, artifactPath, app, entryPrefix);
         ReadDataSources(source, artifactPath, app);
 
         return app;
@@ -38,7 +47,11 @@ public static class MsappExtractor
                         && e.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             .OrderBy(e => e, StringComparer.OrdinalIgnoreCase);
 
-    private static Control? TryReadScreen(IArtifactSource source, string artifactPath, string entry)
+    private static string Qualify(string? prefix, string entry) =>
+        string.IsNullOrEmpty(prefix) ? entry : $"{prefix}/{entry}";
+
+    private static Control? TryReadScreen(
+        IArtifactSource source, string artifactPath, string entry, string? entryPrefix)
     {
         JsonDocument doc;
         try
@@ -58,7 +71,7 @@ public static class MsappExtractor
         {
             if (!doc.RootElement.TryGetProperty("TopParent", out var top) || top.ValueKind != JsonValueKind.Object)
                 return null;
-            return ReadControl(top, artifactPath, entry, isScreen: true);
+            return ReadControl(top, artifactPath, Qualify(entryPrefix, entry), isScreen: true);
         }
     }
 
@@ -105,7 +118,8 @@ public static class MsappExtractor
         return control;
     }
 
-    private static void ReadAppProperties(IArtifactSource source, string artifactPath, CanvasApp app)
+    private static void ReadAppProperties(
+        IArtifactSource source, string artifactPath, CanvasApp app, string? entryPrefix)
     {
         const string entry = "Properties.json";
         if (!source.Has(entry))
@@ -123,7 +137,7 @@ public static class MsappExtractor
                 app.AppProperties.Add(new PowerFxProperty(
                     name,
                     script,
-                    new SourceLocation(artifactPath, entry, $"App.{name}", 0, 0)));
+                    new SourceLocation(artifactPath, Qualify(entryPrefix, entry), $"App.{name}", 0, 0)));
             }
         }
         catch (JsonException)

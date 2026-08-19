@@ -133,3 +133,60 @@ public class FlowExtractorTests
         Assert.Null(FlowExtractor.Extract("{ nao e json", "sol.zip", "Workflows/f.json", "F"));
     }
 }
+
+public class FlowDescriptionTests
+{
+    [Fact]
+    public void Extract_ReadsActionDescription()
+    {
+        const string json = """
+        {
+          "definition": {
+            "actions": {
+              "Compor": {
+                "type": "Compose",
+                "description": "pp-lint: disable=FL201",
+                "inputs": "x"
+              }
+            }
+          }
+        }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+        Assert.Equal("pp-lint: disable=FL201", Assert.Single(flow.Actions).Description);
+    }
+
+    [Fact]
+    public void Extract_ActionWithoutDescriptionHasNull()
+    {
+        const string json = """
+        { "definition": { "actions": { "Compor": { "type": "Compose", "inputs": "x" } } } }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+        Assert.Null(Assert.Single(flow.Actions).Description);
+    }
+
+    [Fact]
+    public void Extract_DescriptionOfNestedActionIsRead()
+    {
+        const string json = """
+        {
+          "definition": {
+            "actions": {
+              "Loop": {
+                "type": "Foreach",
+                "actions": {
+                  "Interno": { "type": "Compose", "description": "nota do autor", "inputs": "y" }
+                }
+              }
+            }
+          }
+        }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+        Assert.Equal("nota do autor", flow.AllActions().Single(a => a.Name == "Interno").Description);
+    }
+}

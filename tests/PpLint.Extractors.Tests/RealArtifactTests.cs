@@ -1,3 +1,4 @@
+using PpLint.Core.Configuration;
 using PpLint.Core.Rules;
 using PpLint.Rules.Naming;
 
@@ -102,6 +103,29 @@ public class RealArtifactTests
 
         Assert.DoesNotContain(result.Diagnostics, d =>
             d.Message.Contains("galleryTemplate") || d.Message.Contains("DataCard"));
+    }
+
+    [Fact]
+    public void RealMsapp_PascalTypePresetFitsTheAppFarBetter()
+    {
+        // O app real nomeia como ButtonCreateGame/LabelPlayers. Com o preset
+        // default ele recebe mais de cem avisos de prefixo; com o preset que
+        // corresponde à sua convenção, quase nenhum. É esse o ponto da Fase 2a.
+        var project = ProjectLoader.Load(RealMsapp);
+        var engine = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly);
+
+        var camel = ConfigResolver.Resolve(
+            new ConfigFile { Preset = "camel-prefix" }, CliOverrides.None);
+        var pascal = ConfigResolver.Resolve(
+            new ConfigFile { Preset = "pascal-type" }, CliOverrides.None);
+
+        var comCamel = engine.Run(project, camel).Diagnostics.Count(d => d.RuleId == "NM011");
+        var comPascal = engine.Run(project, pascal).Diagnostics.Count(d => d.RuleId == "NM011");
+
+        Assert.True(comCamel > 50, $"esperava muitos avisos com camel-prefix, veio {comCamel}");
+        Assert.True(
+            comPascal < comCamel / 2,
+            $"pascal-type devia reduzir bastante: camel={comCamel}, pascal={comPascal}");
     }
 
     // ---- solução exportada (aguardando fixture) ----

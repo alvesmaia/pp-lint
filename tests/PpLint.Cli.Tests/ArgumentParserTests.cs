@@ -12,7 +12,8 @@ public class ArgumentParserTests
         Assert.Equal(CliCommand.Check, r.Value!.Command);
         Assert.Equal(["MinhaSolucao.zip"], r.Value.Paths);
         Assert.Equal("text", r.Value.Format);
-        Assert.Equal(Severity.Error, r.Value.FailOn);
+        // Sem --fail-on, o parser não opina: o default vem do ConfigResolver.
+        Assert.Null(r.Value.FailOn);
     }
 
     [Fact]
@@ -81,5 +82,67 @@ public class ArgumentParserTests
         var r = ArgumentParser.Parse(["check", "a.zip", "--fail-on", "critical"]);
         Assert.False(r.IsSuccess);
         Assert.Contains("critical", r.Error);
+    }
+}
+
+public class ArgumentParserConfigTests
+{
+    [Fact]
+    public void ParsesSelectAsCommaSeparatedList()
+    {
+        var r = ArgumentParser.Parse(["check", "a.zip", "--select", "NM,PF101"]);
+
+        Assert.True(r.IsSuccess);
+        Assert.Equal(["NM", "PF101"], r.Value!.Select);
+    }
+
+    [Fact]
+    public void ParsesIgnore()
+    {
+        var r = ArgumentParser.Parse(["check", "a.zip", "--ignore", "NM011"]);
+
+        Assert.Equal(["NM011"], r.Value!.Ignore);
+    }
+
+    [Fact]
+    public void ParsesConfigPath()
+    {
+        var r = ArgumentParser.Parse(["check", "a.zip", "--config", "custom.toml"]);
+
+        Assert.Equal("custom.toml", r.Value!.ConfigPath);
+    }
+
+    [Fact]
+    public void FailOnIsNullWhenNotPassed()
+    {
+        var r = ArgumentParser.Parse(["check", "a.zip"]);
+
+        Assert.Null(r.Value!.FailOn);
+    }
+
+    [Fact]
+    public void FailOnIsCapturedWhenPassed()
+    {
+        var r = ArgumentParser.Parse(["check", "a.zip", "--fail-on", "info"]);
+
+        Assert.Equal(Severity.Info, r.Value!.FailOn);
+    }
+
+    [Fact]
+    public void SelectWithoutValueFails()
+    {
+        var r = ArgumentParser.Parse(["check", "a.zip", "--select"]);
+
+        Assert.False(r.IsSuccess);
+        Assert.Contains("--select", r.Error);
+    }
+
+    [Fact]
+    public void SelectAndIgnoreDefaultToEmpty()
+    {
+        var r = ArgumentParser.Parse(["check", "a.zip"]);
+
+        Assert.Empty(r.Value!.Select);
+        Assert.Empty(r.Value.Ignore);
     }
 }
