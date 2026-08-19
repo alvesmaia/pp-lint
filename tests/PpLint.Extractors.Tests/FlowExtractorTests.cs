@@ -190,3 +190,89 @@ public class FlowDescriptionTests
         Assert.Equal("nota do autor", flow.AllActions().Single(a => a.Name == "Interno").Description);
     }
 }
+
+public class FlowMetadataTests
+{
+    [Fact]
+    public void Extract_ReadsRecurrenceFromTrigger()
+    {
+        const string json = """
+        {
+          "properties": {
+            "definition": {
+              "triggers": {
+                "Recorrencia": {
+                  "type": "Recurrence",
+                  "recurrence": { "frequency": "Day", "interval": 1, "timeZone": "UTC" }
+                }
+              },
+              "actions": {}
+            }
+          }
+        }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+
+        Assert.Equal("Day", flow.Trigger!.Recurrence!.Frequency);
+        Assert.Equal(1, flow.Trigger.Recurrence.Interval);
+    }
+
+    [Fact]
+    public void Extract_TriggerWithoutRecurrenceHasNull()
+    {
+        const string json = """
+        { "definition": { "triggers": { "Quando": { "type": "OpenApiConnection" } }, "actions": {} } }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+
+        Assert.Null(flow.Trigger!.Recurrence);
+    }
+
+    [Fact]
+    public void Extract_ReadsFlowDescription()
+    {
+        const string json = """
+        {
+          "properties": {
+            "description": "Envia o resumo diário",
+            "definition": { "actions": {} }
+          }
+        }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+
+        Assert.Equal("Envia o resumo diário", flow.Description);
+    }
+
+    [Fact]
+    public void Extract_FlowWithoutDescriptionHasNull()
+    {
+        const string json = """
+        { "properties": { "definition": { "actions": {} } } }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+
+        Assert.Null(flow.Description);
+    }
+
+    [Fact]
+    public void Extract_IntervalDefaultsToOneWhenAbsent()
+    {
+        const string json = """
+        {
+          "definition": {
+            "triggers": { "R": { "type": "Recurrence", "recurrence": { "frequency": "Hour" } } },
+            "actions": {}
+          }
+        }
+        """;
+
+        var flow = FlowExtractor.Extract(json, "sol.zip", "Workflows/f.json", "F")!;
+
+        Assert.Equal(1, flow.Trigger!.Recurrence!.Interval);
+    }
+}
