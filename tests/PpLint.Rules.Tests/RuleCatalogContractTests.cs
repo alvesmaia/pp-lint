@@ -107,10 +107,46 @@ public class RuleCatalogContractTests
         var flow = new CloudFlow
         {
             Name = "F",
+            Description = "fluxo de exemplo",
             Location = new SourceLocation("teste.zip", "Workflows/f.json", "F", 0, 0),
         };
+        flow.Trigger = new FlowTrigger(
+            "R", "Recurrence",
+            new SourceLocation("teste.zip", "Workflows/f.json", "R", 0, 0),
+            new FlowRecurrence("Day", 1));
+
+        var inicializa = new FlowAction
+        {
+            Name = "Inicializar",
+            Type = "InitializeVariable",
+            Location = new SourceLocation("teste.zip", "Workflows/f.json", "Inicializar", 0, 0),
+        };
+        inicializa.RunAfterStates.Add("Succeeded");
+
+        var compoe = new FlowAction
+        {
+            Name = "Compor",
+            Type = "Compose",
+            Location = new SourceLocation("teste.zip", "Workflows/f.json", "Compor", 0, 0),
+        };
+        compoe.RunAfter.Add("Inicializar");
+        compoe.RunAfterStates.Add("Succeeded");
+        compoe.Expressions.Add("@{variables('varX')}");
+
+        var laco = new FlowAction
+        {
+            Name = "Laco",
+            Type = "Foreach",
+            Location = new SourceLocation("teste.zip", "Workflows/f.json", "Laco", 0, 0),
+        };
+        laco.RunAfterStates.Add("Succeeded");
+
+        flow.Actions.Add(inicializa);
+        flow.Actions.Add(compoe);
+        flow.Actions.Add(laco);
         flow.Variables.Add(new FlowVariable("varX", "integer",
             new SourceLocation("teste.zip", "Workflows/f.json", "Inicializar", 0, 0)));
+
 
         var project = ProjectWith(app);
         project.Flows.Add(flow);
