@@ -94,6 +94,7 @@ public static class FlowExtractor
             {
                 Name = property.Name,
                 Type = GetString(property.Value, "type") ?? string.Empty,
+                Description = GetString(property.Value, "description"),
                 Location = new SourceLocation(artifactPath, entryPath, property.Name, 0, 0),
             };
 

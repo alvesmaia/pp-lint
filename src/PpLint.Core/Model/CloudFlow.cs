@@ -12,6 +12,12 @@ public sealed class FlowAction
 
     public required SourceLocation Location { get; init; }
 
+    /// <summary>
+    /// Descrição da ação. JSON não aceita comentário, então é aqui que vivem
+    /// as diretivas de supressão do pp-lint em fluxos.
+    /// </summary>
+    public string? Description { get; init; }
+
     public List<string> RunAfter { get; } = [];
 
     /// <summary>Todas as strings encontradas nos inputs da ação, onde vivem as expressões @{...}.</summary>
