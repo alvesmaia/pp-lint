@@ -19,6 +19,9 @@ fail-on = "error"
 # NM011 = "info"
 
 # Sobrescreve apenas os padrões que você mencionar; o resto vem do preset.
+# ATENÇÃO: estas chaves são aceitas e validadas, mas nenhuma regra as consome
+# ainda — as regras de variáveis e telas (NM001-NM003, NM012) chegam na Fase 2b.
+# Configurá-las hoje não muda comportamento nenhum.
 [pp-lint.naming]
 # global-variable = "^var[A-Z][A-Za-z0-9]*$"
 # screen = "^scr[A-Z][A-Za-z0-9]*$"
@@ -29,5 +32,8 @@ fail-on = "error"
 # toggleSwitch = "tgl"
 
 # Regras que não se aplicam a determinados artefatos.
+# O glob casa com o caminho passado na linha de comando, não com cada arquivo
+# analisado: funciona ao apontar o .msapp direto, mas não filtra apps dentro de
+# uma solução .zip nem ao rodar sobre um diretório.
 [pp-lint.per-artifact-ignores]
 # "**/Legado*.msapp" = ["NM010", "NM011"]

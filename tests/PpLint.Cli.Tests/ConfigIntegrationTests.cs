@@ -39,11 +39,13 @@ public class ConfigIntegrationTests : IDisposable
         return path;
     }
 
-    private static (int Code, string Out, string Err) Invoke(params string[] args)
+    private (int Code, string Out, string Err) Invoke(params string[] args)
     {
         var stdout = new StringWriter();
         var stderr = new StringWriter();
-        var code = Program.Run(args, stdout, stderr);
+        // O diretório de busca é o temporário do teste, e não o do processo:
+        // assim um pp-lint.toml na raiz do repositório não muda estes resultados.
+        var code = Program.Run(args, stdout, stderr, _dir);
         return (code, stdout.ToString(), stderr.ToString());
     }
 

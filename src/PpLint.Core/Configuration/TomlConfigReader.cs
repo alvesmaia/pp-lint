@@ -25,11 +25,19 @@ public static class TomlConfigReader
             throw new ConfigException($"TOML inválido: {ex.Message}", ex);
         }
 
-        if (root.TryGetValue("pp-lint", out var raw) && raw is not TomlTable)
+        if (!root.TryGetValue("pp-lint", out var raw))
+            throw new ConfigException(
+                "O arquivo não tem a seção [pp-lint]; nada seria aplicado. "
+                + "Comece o arquivo com a linha [pp-lint].");
+
+        if (raw is not TomlTable section)
             throw new ConfigException("A seção [pp-lint] precisa ser uma tabela.");
 
-        var section = raw as TomlTable ?? new TomlTable();
+        RejectUnknownKeys(section, KnownSectionKeys, "[pp-lint]");
+
         var naming = GetTable(section, "naming");
+        if (naming is not null)
+            RejectUnknownSubTables(naming);
 
         return new ConfigFile
         {
@@ -43,6 +51,45 @@ public static class TomlConfigReader
             PerArtifactIgnores = GetListMap(GetTable(section, "per-artifact-ignores")),
         };
     }
+
+    private static readonly string[] KnownSectionKeys =
+    [
+        "preset", "select", "ignore", "fail-on",
+        "severity-overrides", "naming", "per-artifact-ignores",
+    ];
+
+    private static readonly string[] KnownNamingKeys =
+    [
+        "global-variable", "context-variable", "collection", "screen", "component",
+        "control-prefixes",
+    ];
+
+    /// <summary>
+    /// Chave desconhecida é erro, não silêncio. Um 'fail_on' com underscore
+    /// parseia sem reclamar, e o time acredita ter configurado algo que não vale —
+    /// o CI seguiria passando enquanto todos pensam que está falhando.
+    /// </summary>
+    private static void RejectUnknownKeys(TomlTable table, string[] known, string where)
+    {
+        foreach (var (key, _) in table)
+        {
+            if (known.Contains(key, StringComparer.OrdinalIgnoreCase))
+                continue;
+
+            var sugestao = known.FirstOrDefault(k =>
+                k.Replace("-", "_", StringComparison.Ordinal).Equals(key, StringComparison.OrdinalIgnoreCase)
+                || k.Replace("-", string.Empty, StringComparison.Ordinal).Equals(key, StringComparison.OrdinalIgnoreCase));
+
+            var dica = sugestao is null
+                ? $"Válidas: {string.Join(", ", known)}."
+                : $"Você quis dizer '{sugestao}'?";
+
+            throw new ConfigException($"Chave desconhecida em {where}: '{key}'. {dica}");
+        }
+    }
+
+    private static void RejectUnknownSubTables(TomlTable naming) =>
+        RejectUnknownKeys(naming, KnownNamingKeys, "[pp-lint.naming]");
 
     private static TomlTable? GetTable(TomlTable? parent, string key)
     {

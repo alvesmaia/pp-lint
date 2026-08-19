@@ -47,7 +47,9 @@ public static class RuleFilter
 
     private static bool GlobMatches(string glob, string path)
     {
-        var pattern = "^" + Regex.Escape(glob)
+        // O caminho já vem normalizado; o glob também precisa, senão um
+        // "**\Legado*.msapp" escrito no Windows nunca casa e o ignore vira no-op.
+        var pattern = "^" + Regex.Escape(glob.Replace('\\', '/'))
             .Replace(@"\*\*/", "(?:.*/)?")
             .Replace(@"\*\*", ".*")
             .Replace(@"\*", "[^/]*")

@@ -28,7 +28,16 @@ public static class Program
         return Run(args, Console.Out, Console.Error);
     }
 
-    public static int Run(string[] args, TextWriter stdout, TextWriter stderr)
+    /// <summary>
+    /// <paramref name="workingDirectory"/> é de onde a busca por pp-lint.toml começa.
+    /// Injetável para que os testes não dependam do diretório do processo, que é
+    /// global e compartilhado entre testes paralelos.
+    /// </summary>
+    public static int Run(
+        string[] args,
+        TextWriter stdout,
+        TextWriter stderr,
+        string? workingDirectory = null)
     {
         var parsed = ArgumentParser.Parse(args);
         if (!parsed.IsSuccess)
@@ -59,7 +68,7 @@ public static class Program
                 return 0;
 
             case CliCommand.Check:
-                return RunCheck(options, stdout, stderr);
+                return RunCheck(options, stdout, stderr, workingDirectory ?? Directory.GetCurrentDirectory());
 
             default:
                 stderr.WriteLine("Comando não implementado.");
@@ -67,7 +76,8 @@ public static class Program
         }
     }
 
-    private static int RunCheck(CliOptions options, TextWriter stdout, TextWriter stderr)
+    private static int RunCheck(
+        CliOptions options, TextWriter stdout, TextWriter stderr, string workingDirectory)
     {
         if (options.Format != "text")
         {
@@ -79,7 +89,7 @@ public static class Program
         bool usedConfigFile;
         try
         {
-            (config, usedConfigFile) = LoadConfig(options);
+            (config, usedConfigFile) = LoadConfig(options, workingDirectory);
         }
         catch (ConfigException ex)
         {
@@ -132,7 +142,8 @@ public static class Program
     /// Monta a configuração final e informa se algum arquivo foi de fato usado —
     /// é o que decide se vale avisar sobre o preset default.
     /// </summary>
-    private static (PpLintConfig Config, bool UsedFile) LoadConfig(CliOptions options)
+    private static (PpLintConfig Config, bool UsedFile) LoadConfig(
+        CliOptions options, string workingDirectory)
     {
         string? path;
 
@@ -144,15 +155,27 @@ public static class Program
         }
         else
         {
-            path = ConfigLocator.Find(Directory.GetCurrentDirectory());
+            path = ConfigLocator.Find(workingDirectory);
         }
 
         var file = ConfigFile.Empty;
         if (path is not null)
         {
+            string texto;
             try
             {
-                file = TomlConfigReader.Read(File.ReadAllText(path));
+                texto = File.ReadAllText(path);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Sem isso, um arquivo travado ou sem permissão derruba o processo
+                // com stack trace em vez de sair com código 2 e uma mensagem útil.
+                throw new ConfigException($"Não foi possível ler '{path}': {ex.Message}", ex);
+            }
+
+            try
+            {
+                file = TomlConfigReader.Read(texto);
             }
             catch (ConfigException ex)
             {
@@ -165,7 +188,16 @@ public static class Program
             Ignore: options.Ignore.Count > 0 ? options.Ignore : null,
             FailOn: options.FailOn);
 
-        return (ConfigResolver.Resolve(file, cli), path is not null);
+        try
+        {
+            return (ConfigResolver.Resolve(file, cli), path is not null);
+        }
+        catch (ConfigException ex) when (path is not null)
+        {
+            // Com um arquivo descoberto num diretório ancestral, dizer apenas
+            // "preset desconhecido" deixa o usuário sem saber qual arquivo corrigir.
+            throw new ConfigException($"Erro em '{path}': {ex.Message}", ex);
+        }
     }
 
 
@@ -187,11 +219,16 @@ public static class Program
           pp-lint --version                     mostra a versão
 
         Opções:
+          --config <arquivo>                    usa este pp-lint.toml em vez de procurar
+          --select <IDs>                        só estas regras (ID ou categoria, separados por vírgula)
+          --ignore <IDs>                        nunca estas regras; vence o --select
           --format <text|json|sarif|html|md>    formato de saída (padrão: text)
           --output <arquivo>                    grava a saída em arquivo
           --fail-on <error|warning|info>        severidade que retorna código 1 (padrão: error)
           --no-color                            desativa cores
           --quiet                               omite os achados individuais
+
+        Sem --config, procura pp-lint.toml no diretório atual e nos ancestrais.
 
         Códigos de saída:
           0  nenhum achado no nível de --fail-on

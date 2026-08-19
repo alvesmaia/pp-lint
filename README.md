@@ -135,6 +135,11 @@ pp-lint check App.msapp --config ../equipe/pp-lint.toml
 `--select` e `--ignore` aceitam ID (`PF101`) ou categoria inteira (`PF`), separados
 por vírgula. `--ignore` sempre vence `--select`.
 
+Uma lista passada na linha de comando **substitui** a do arquivo, não soma. Se o
+`pp-lint.toml` tem `ignore = ["PF125"]` e você roda `--ignore NM011`, apenas NM011
+é ignorada naquela execução — PF125 volta a valer. É deliberado (a flag diz
+exatamente o que você quer naquela vez), mas surpreende se você esperava união.
+
 ## Silenciar um achado
 
 Em Power Fx, um comentário na própria fórmula:
@@ -151,8 +156,15 @@ pp-lint: disable=FL201
 ```
 
 A diretiva vale para o controle ou a ação onde aparece, e aceita vários IDs
-separados por vírgula. Um achado suprimido sai do numerador **e** do denominador
-do índice de conformidade: silenciar não aumenta a nota.
+separados por vírgula.
+
+**Suprimir tira o achado do relatório, não o débito da nota.** O item continua
+contando como violação no índice de conformidade — silenciar tudo mostra 0%, não
+100%. Isso é deliberado: se o alvo saísse da conta, `(v−1)/(t−1)` seria sempre
+maior que `v/t` e a nota subiria a cada supressão, tornando a métrica inútil.
+
+Para quando a regra genuinamente não se aplica — e não deve pesar na nota — use
+`ignore` (regra inteira) ou `per-artifact-ignores` (por artefato).
 
 Para desligar uma regra inteira, use `ignore` no TOML ou `--ignore NM011`. Para
 excluir artefatos específicos:
@@ -161,6 +173,14 @@ excluir artefatos específicos:
 [pp-lint.per-artifact-ignores]
 "**/Legado*.msapp" = ["NM010", "NM011"]
 ```
+
+**Limitação atual:** o glob é comparado com o caminho que você passou na linha de
+comando, não com cada arquivo analisado. Ele funciona ao apontar o `.msapp`
+diretamente (`pp-lint check apps/LegadoVendas.msapp`), mas **não** filtra apps
+individuais dentro de uma solução `.zip` nem ao rodar sobre um diretório — nesses
+casos o caminho comparado é o do `.zip` ou da pasta. Para excluir um app dentro de
+uma solução, use supressão inline por enquanto. Filtro por artefato analisado está
+previsto para a Fase 2c.
 
 ## Garantias
 

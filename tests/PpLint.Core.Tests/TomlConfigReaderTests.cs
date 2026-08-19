@@ -142,3 +142,56 @@ public class TomlConfigReaderTests
         Assert.Contains("ignore", ex.Message);
     }
 }
+
+public class TomlUnknownKeyTests
+{
+    [Fact]
+    public void UnknownKeyInSectionThrows()
+    {
+        // 'fail_on' com underscore parseia limpo e o time acreditaria estar
+        // configurando fail-on; o CI seguiria saindo 0 em avisos.
+        var ex = Assert.Throws<ConfigException>(() => TomlConfigReader.Read("""
+            [pp-lint]
+            fail_on = "warning"
+            """));
+
+        Assert.Contains("fail_on", ex.Message);
+        Assert.Contains("fail-on", ex.Message);
+    }
+
+    [Fact]
+    public void KnownKeysAreAccepted()
+    {
+        var config = TomlConfigReader.Read("""
+            [pp-lint]
+            preset = "camel-prefix"
+            select = ["NM"]
+            ignore = ["PF101"]
+            fail-on = "info"
+            """);
+
+        Assert.Equal("camel-prefix", config.Preset);
+    }
+
+    [Fact]
+    public void FileWithoutSectionHeaderThrows()
+    {
+        // Sem [pp-lint] nada seria aplicado, mas o CLI diria que usou um arquivo.
+        var ex = Assert.Throws<ConfigException>(() => TomlConfigReader.Read("""
+            preset = "pascal-type"
+            """));
+
+        Assert.Contains("[pp-lint]", ex.Message);
+    }
+
+    [Fact]
+    public void UnknownSubTableThrows()
+    {
+        var ex = Assert.Throws<ConfigException>(() => TomlConfigReader.Read("""
+            [pp-lint.naming-rules]
+            button = "btn"
+            """));
+
+        Assert.Contains("naming-rules", ex.Message);
+    }
+}

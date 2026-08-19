@@ -93,7 +93,7 @@ public static class SolutionExtractor
             if (nested is null)
                 continue;
 
-            project.Apps.Add(MsappExtractor.Extract(nested, project.SourcePath, AppNameFrom(entry)));
+            project.Apps.Add(MsappExtractor.Extract(nested, project.SourcePath, AppNameFrom(entry), entryPrefix: entry));
         }
     }
 

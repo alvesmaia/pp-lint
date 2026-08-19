@@ -49,11 +49,11 @@ public sealed class LintContext
     {
         if (_suppressions.IsSuppressed(_ruleId, location))
         {
-            // Suprimir remove o alvo da conta inteira. Descontar só a violação
-            // faria a conformidade subir a cada supressão, e o índice deixaria
-            // de significar "itens verificados que estão conformes".
-            if (EvaluatedCount > 0)
-                EvaluatedCount--;
+            // O alvo continua contando como violação: suprimir tira o achado do
+            // relatório, não o débito da nota. Remover o alvo dos dois lados da
+            // fração faria a conformidade SUBIR — (v-1)/(t-1) > v/t sempre que
+            // v < t — e bastaria silenciar tudo para exibir 100%.
+            ViolationCount++;
             return;
         }
 
