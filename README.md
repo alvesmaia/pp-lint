@@ -71,6 +71,7 @@ apps de tamanhos diferentes.
 | NM003 | Coleção fora da convenção (`colItens`) | Aviso |
 | NM010 | Controle com nome padrão do Studio (`Button1`, `Screen1`) | Erro |
 | NM011 | Prefixo do controle não corresponde ao tipo, inclusive prefixo de **outro** tipo | Aviso |
+| NM040 | Nome com acento, cedilha, espaço ou caractere especial | **Erro** |
 | PF101 | Variável global definida e nunca lida | Aviso |
 | PF102 | Variável de contexto definida e nunca lida **na tela dela** | Aviso |
 | PF103 | Coleção criada e nunca usada | Aviso |
