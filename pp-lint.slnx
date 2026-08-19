@@ -4,11 +4,13 @@
     <Project Path="src/PpLint.Core/PpLint.Core.csproj" />
     <Project Path="src/PpLint.Extractors/PpLint.Extractors.csproj" />
     <Project Path="src/PpLint.PowerFx/PpLint.PowerFx.csproj" />
+    <Project Path="src/PpLint.Rules/PpLint.Rules.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PpLint.Cli.Tests/PpLint.Cli.Tests.csproj" />
     <Project Path="tests/PpLint.Core.Tests/PpLint.Core.Tests.csproj" />
     <Project Path="tests/PpLint.Extractors.Tests/PpLint.Extractors.Tests.csproj" />
     <Project Path="tests/PpLint.PowerFx.Tests/PpLint.PowerFx.Tests.csproj" />
+    <Project Path="tests/PpLint.Rules.Tests/PpLint.Rules.Tests.csproj" />
   </Folder>
 </Solution>
