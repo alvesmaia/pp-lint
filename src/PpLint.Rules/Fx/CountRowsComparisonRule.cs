@@ -23,14 +23,24 @@ public sealed class CountRowsComparisonRule : IRule
                 if (contagem is null)
                     continue;
 
+                // Só comparações são alvo. CountRows(x) + 1 usa a contagem como
+                // número, não como teste de existência, e não pode entrar no
+                // denominador da conformidade.
+                if (node.Op is not (BinaryOp.Greater or BinaryOp.GreaterEqual
+                    or BinaryOp.Less or BinaryOp.LessEqual
+                    or BinaryOp.Equal or BinaryOp.NotEqual))
+                {
+                    continue;
+                }
+
                 ctx.Evaluated(1);
 
                 if (TestaExistencia(node))
                 {
                     ctx.Report(
                         property.Location,
-                        $"'{node}' conta todos os itens só para saber se existe algum. "
-                        + $"Use '!IsEmpty({contagem})', que para no primeiro item.");
+                        $"'{AstComparer.Quote(node)}' conta todos os itens só para saber se existe algum. "
+                        + $"Use '!IsEmpty({AstComparer.Render(contagem)})', que para no primeiro item.");
                 }
             }
         }

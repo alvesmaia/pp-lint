@@ -31,12 +31,12 @@ public sealed class RedundantBooleanIfRule : IRule
                     continue;
                 }
 
-                var condicao = args[0].ToString();
+                var condicao = AstComparer.Render(args[0]);
                 var sugestao = entao ? condicao : $"Not({condicao})";
 
                 ctx.Report(
                     property.Location,
-                    $"'{call}' pode ser escrito como '{sugestao}'. "
+                    $"'{AstComparer.Quote(call)}' pode ser escrito como '{sugestao}'. "
                     + "O If não acrescenta nada quando os dois ramos são booleanos opostos.");
             }
         }
@@ -60,6 +60,11 @@ public sealed class BooleanComparisonRule : IRule
                 if (node.Op is not (BinaryOp.Equal or BinaryOp.NotEqual))
                     continue;
 
+                // Toda comparação de igualdade é alvo desta regra, inclusive as que
+                // passam. Contar só as reportadas faria Evaluated == Violations, e a
+                // conformidade da PF112 seria sempre 0% quando ela achasse algo.
+                ctx.Evaluated(1);
+
                 var literalEsquerda = LogicHelpers.IsBooleanLiteral(node.Left, out var valorEsquerda);
                 var literalDireita = LogicHelpers.IsBooleanLiteral(node.Right, out var valorDireita);
 
@@ -70,18 +75,17 @@ public sealed class BooleanComparisonRule : IRule
                 if (!literalEsquerda && !literalDireita)
                     continue;
 
-                ctx.Evaluated(1);
-
                 var expressao = literalEsquerda ? node.Right : node.Left;
                 var literal = literalEsquerda ? valorEsquerda : valorDireita;
 
                 // '<> true' equivale a 'Not(x)'; '= false' também.
                 var afirmativo = node.Op == BinaryOp.Equal ? literal : !literal;
-                var sugestao = afirmativo ? expressao.ToString() : $"Not({expressao})";
+                var render = AstComparer.Render(expressao);
+                var sugestao = afirmativo ? render : $"Not({render})";
 
                 ctx.Report(
                     property.Location,
-                    $"'{node}' pode ser escrito como '{sugestao}'. "
+                    $"'{AstComparer.Quote(node)}' pode ser escrito como '{sugestao}'. "
                     + "Comparar um booleano com true ou false não acrescenta informação.");
             }
         }

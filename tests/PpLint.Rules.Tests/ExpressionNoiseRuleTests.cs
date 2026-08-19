@@ -76,7 +76,8 @@ public class ExpressionNoiseRuleTests
     [Fact]
     public void PF118_ReportsConcatenationWithEmptyText()
     {
-        var d = Assert.Single(Run(new EmptyConcatenationRule(), "Set(varX, varNome & \"\")").Diagnostics);
+        // O operando já é texto, então o '& ""' não converte nada — só sobra.
+        var d = Assert.Single(Run(new EmptyConcatenationRule(), "Set(varX, Upper(varNome) & \"\")").Diagnostics);
 
         Assert.Equal("PF118", d.RuleId);
         Assert.Equal(Severity.Info, d.Severity);
@@ -85,7 +86,7 @@ public class ExpressionNoiseRuleTests
     [Fact]
     public void PF118_ReportsWhenEmptyComesFirst()
     {
-        Assert.Single(Run(new EmptyConcatenationRule(), "Set(varX, \"\" & varNome)").Diagnostics);
+        Assert.Single(Run(new EmptyConcatenationRule(), "Set(varX, \"\" & Text(varData))").Diagnostics);
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public class ExpressionNoiseRuleTests
     [Fact]
     public void PF118_EvaluatesEveryConcatenation()
     {
-        var result = Run(new EmptyConcatenationRule(), "Set(varA, varX & \"\"); Set(varB, varY & \"z\")");
+        var result = Run(new EmptyConcatenationRule(), "Set(varA, Text(varX) & \"\"); Set(varB, varY & \"z\")");
         var tally = Assert.Single(result.Tallies);
 
         Assert.Equal(2, tally.Evaluated);

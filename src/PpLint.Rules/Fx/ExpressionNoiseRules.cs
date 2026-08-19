@@ -16,10 +16,18 @@ public sealed class DoubleNegationRule : IRule
     {
         foreach (var (property, root) in LogicHelpers.ParsedProperties(ctx))
         {
+            // Numa cadeia como Not(Not(Not(x))), cada nó interno também nega duas
+            // vezes. Reportar todos daria três avisos para um problema só, então
+            // ignoro quem é operando de outra negação e falo apenas do topo.
+            var aninhados = AstWalker.Descendants(root)
+                .Select(NegatedOperand)
+                .OfType<TexlNode>()
+                .ToHashSet();
+
             foreach (var node in AstWalker.Descendants(root))
             {
                 var interno = NegatedOperand(node);
-                if (interno is null)
+                if (interno is null || aninhados.Contains(node))
                     continue;
 
                 ctx.Evaluated(1);
@@ -29,7 +37,7 @@ public sealed class DoubleNegationRule : IRule
                 {
                     ctx.Report(
                         property.Location,
-                        $"'{node}' nega duas vezes e equivale a '{duplo}'. Remova a dupla negação.");
+                        $"'{AstComparer.Quote(node)}' nega duas vezes e equivale a '{AstComparer.Render(duplo)}'. Remova a dupla negação.");
                 }
             }
         }
@@ -82,7 +90,7 @@ public sealed class PointlessFilterRule : IRule
                 {
                     ctx.Report(
                         property.Location,
-                        $"'{call}' filtra por 'true' e devolve '{args[0]}' inteiro. "
+                        $"'{AstComparer.Quote(call)}' filtra por 'true' e devolve '{AstComparer.Render(args[0])}' inteiro. "
                         + "Remova o Filter ou escreva a condição real.");
                 }
             }
@@ -108,11 +116,16 @@ public sealed class EmptyConcatenationRule : IRule
 
                 ctx.Evaluated(1);
 
-                if (IsEmptyText(node.Left) || IsEmptyText(node.Right))
+                var outro = IsEmptyText(node.Left) ? node.Right : IsEmptyText(node.Right) ? node.Left : null;
+
+                // Só reclamo quando o outro lado comprovadamente já é texto. O
+                // idioma 'varQtd & ""' converte número em texto: mandar remover a
+                // concatenação mudaria o tipo do resultado.
+                if (outro is not null && IsKnownText(outro))
                 {
                     ctx.Report(
                         property.Location,
-                        $"'{node}' concatena com texto vazio, o que não muda o resultado. "
+                        $"'{AstComparer.Quote(node)}' concatena com texto vazio, o que não muda o resultado. "
                         + "Remova a concatenação.");
                 }
             }
@@ -121,4 +134,25 @@ public sealed class EmptyConcatenationRule : IRule
 
     private static bool IsEmptyText(TexlNode node) =>
         node is StrLitNode texto && texto.Value.Length == 0;
+
+    /// <summary>
+    /// Funções cujo resultado é sempre texto. A lista é curta de propósito:
+    /// na dúvida, calo a boca — esta regra é Info e um falso positivo aqui
+    /// manda quebrar uma fórmula que funciona.
+    /// </summary>
+    private static readonly string[] TextFunctions =
+    [
+        "Text", "Concatenate", "Concat", "Left", "Right", "Mid", "Trim", "TrimEnds",
+        "Upper", "Lower", "Proper", "Substitute", "Replace", "JSON", "EncodeUrl",
+    ];
+
+    private static bool IsKnownText(TexlNode node) => node switch
+    {
+        StrLitNode => true,
+        StrInterpNode => true,
+        BinaryOpNode { Op: BinaryOp.Concat } => true,
+        CallNode call => AstWalker.FunctionName(call) is { } nome
+            && TextFunctions.Contains(nome, StringComparer.OrdinalIgnoreCase),
+        _ => false,
+    };
 }
