@@ -87,6 +87,13 @@ apps de tamanhos diferentes.
 | PF117 | `CountRows(x) > 0` em vez de `!IsEmpty(x)` | Aviso |
 | PF118 | Concatenação com texto vazio | Informação |
 | FL201 | Variável de fluxo inicializada e nunca lida | Aviso |
+| FL202 | Variável usada antes de ser inicializada | Erro |
+| FL203 | Saída de ação computacional nunca consumida | Aviso |
+| FL210 | Fluxo sem nenhum tratamento de falha | Erro |
+| FL222 | `Aplicar a cada` dentro de outro | Aviso |
+| FL230 | Recorrência mais frequente que o limiar (15 min) | Aviso |
+| FL240 | Fluxo sem descrição | Informação |
+| FL241 | `Executar após` aponta para ação inexistente | Erro |
 
 `pp-lint rules` lista o catálogo instalado.
 

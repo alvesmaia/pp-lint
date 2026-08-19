@@ -54,8 +54,20 @@ public sealed record NamingConfig
         };
 }
 
+/// <summary>Limiares numéricos das regras. Sobrescrevíveis em [pp-lint.thresholds].</summary>
+public sealed record ThresholdConfig
+{
+    /// <summary>
+    /// Recorrência mais frequente que isto costuma ser polling que deveria ser
+    /// gatilho de evento, e consome execução da licença sem necessidade.
+    /// </summary>
+    public int MinRecurrenceMinutes { get; init; } = 15;
+}
+
 public sealed record PpLintConfig
 {
+    public ThresholdConfig Thresholds { get; init; } = new();
+
     public IReadOnlySet<string> Ignore { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyDictionary<string, Severity> SeverityOverrides { get; init; } =

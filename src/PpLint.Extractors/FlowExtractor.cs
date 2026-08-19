@@ -33,6 +33,7 @@ public static class FlowExtractor
             var flow = new CloudFlow
             {
                 Name = flowName,
+                Description = FlowDescription(doc.RootElement),
                 Location = new SourceLocation(artifactPath, entryPath, flowName, 0, 0),
             };
 
@@ -44,7 +45,8 @@ public static class FlowExtractor
                     flow.Trigger = new FlowTrigger(
                         t.Name,
                         GetString(t.Value, "type") ?? string.Empty,
-                        new SourceLocation(artifactPath, entryPath, t.Name, 0, 0));
+                        new SourceLocation(artifactPath, entryPath, t.Name, 0, 0),
+                        ReadRecurrence(t.Value));
                     break; // um fluxo tem exatamente um trigger
                 }
             }
@@ -102,7 +104,22 @@ public static class FlowExtractor
                 && runAfter.ValueKind == JsonValueKind.Object)
             {
                 foreach (var predecessor in runAfter.EnumerateObject())
+                {
                     action.RunAfter.Add(predecessor.Name);
+
+                    // O valor é a lista de estados aceitos do predecessor. É aí que
+                    // aparece o tratamento de erro: qualquer estado diferente de
+                    // Succeeded significa "faça isto se aquilo não deu certo".
+                    if (predecessor.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var estado in predecessor.Value.EnumerateArray())
+                        {
+                            var texto = estado.GetString();
+                            if (!string.IsNullOrEmpty(texto))
+                                action.RunAfterStates.Add(texto);
+                        }
+                    }
+                }
             }
 
             foreach (var name in new[] { "inputs", "foreach", "expression", "condition" })
@@ -180,6 +197,38 @@ public static class FlowExtractor
                     CollectStrings(item, target);
                 break;
         }
+    }
+
+    /// <summary>
+    /// A descrição fica em properties.description, fora da definition — e é o
+    /// único lugar onde ela aparece no arquivo exportado.
+    /// </summary>
+    private static string? FlowDescription(JsonElement root) =>
+        root.ValueKind == JsonValueKind.Object
+        && root.TryGetProperty("properties", out var props)
+        && props.ValueKind == JsonValueKind.Object
+            ? GetString(props, "description")
+            : null;
+
+    private static FlowRecurrence? ReadRecurrence(JsonElement trigger)
+    {
+        if (!trigger.TryGetProperty("recurrence", out var recurrence)
+            || recurrence.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        var frequency = GetString(recurrence, "frequency");
+        if (frequency is null)
+            return null;
+
+        // Frequência sem intervalo declarado significa de um em um.
+        var interval = recurrence.TryGetProperty("interval", out var i)
+                       && i.ValueKind == JsonValueKind.Number
+            ? i.GetInt32()
+            : 1;
+
+        return new FlowRecurrence(frequency, interval);
     }
 
     private static string? GetString(JsonElement element, string property) =>

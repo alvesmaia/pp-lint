@@ -49,13 +49,14 @@ public static class TomlConfigReader
             ControlPrefixes = GetStringMap(GetTable(naming, "control-prefixes")),
             NamingPatterns = GetNamingPatterns(naming),
             PerArtifactIgnores = GetListMap(GetTable(section, "per-artifact-ignores")),
+            MinRecurrenceMinutes = GetInt(GetTable(section, "thresholds"), "min-recurrence-minutes"),
         };
     }
 
     private static readonly string[] KnownSectionKeys =
     [
         "preset", "select", "ignore", "fail-on",
-        "severity-overrides", "naming", "per-artifact-ignores",
+        "severity-overrides", "naming", "per-artifact-ignores", "thresholds",
     ];
 
     private static readonly string[] KnownNamingKeys =
@@ -98,6 +99,16 @@ public static class TomlConfigReader
 
         return value as TomlTable
                ?? throw new ConfigException($"'{key}' precisa ser uma tabela.");
+    }
+
+    private static int? GetInt(TomlTable? table, string key)
+    {
+        if (table is null || !table.TryGetValue(key, out var value))
+            return null;
+
+        return value is long numero
+            ? (int)numero
+            : throw new ConfigException($"'{key}' precisa ser um número inteiro.");
     }
 
     private static string? GetString(TomlTable? table, string key)

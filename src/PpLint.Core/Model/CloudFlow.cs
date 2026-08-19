@@ -1,6 +1,16 @@
 namespace PpLint.Core.Model;
 
-public sealed record FlowTrigger(string Name, string Type, SourceLocation Location);
+/// <summary>
+/// A cadência de um gatilho agendado: "Day", "Hour", "Minute" ou "Second",
+/// e de quantos em quantos. Frequência sem intervalo declarado é de um em um.
+/// </summary>
+public sealed record FlowRecurrence(string Frequency, int Interval);
+
+public sealed record FlowTrigger(
+    string Name,
+    string Type,
+    SourceLocation Location,
+    FlowRecurrence? Recurrence = null);
 
 public sealed record FlowVariable(string Name, string Type, SourceLocation Location);
 
@@ -19,6 +29,12 @@ public sealed class FlowAction
     public string? Description { get; init; }
 
     public List<string> RunAfter { get; } = [];
+
+    /// <summary>
+    /// Estados exigidos dos predecessores — "Succeeded", "Failed", "Skipped",
+    /// "TimedOut". Qualquer coisa diferente de Succeeded é tratamento de erro.
+    /// </summary>
+    public List<string> RunAfterStates { get; } = [];
 
     /// <summary>Todas as strings encontradas nos inputs da ação, onde vivem as expressões @{...}.</summary>
     public List<string> Expressions { get; } = [];
@@ -39,6 +55,9 @@ public sealed class CloudFlow
     public required string Name { get; init; }
 
     public required SourceLocation Location { get; init; }
+
+    /// <summary>Descrição do fluxo, como aparece na lista do Power Automate.</summary>
+    public string? Description { get; init; }
 
     public FlowTrigger? Trigger { get; set; }
 
