@@ -62,7 +62,7 @@ Tomadas com autonomia delegada pelo dono do projeto; qualquer uma pode ser conte
 - Consumes: `Microsoft.PowerFx.Engine`.
 - Produces: `static class PowerFxBuiltins` com `static IReadOnlySet<string> FunctionNames`, `static IReadOnlySet<string> EnumNames`, `static bool IsBuiltin(string name)`.
 
-Os nomes de função vêm de `Engine.GetAllFunctionNames()`, então acompanham a versão do pacote sem manutenção. Os enums entram por lista: o engine não os expõe numa API estável, e são poucos e estáveis no produto.
+Os nomes de função vêm de `Engine.GetAllFunctionNames()`, então acompanham a versão do pacote sem manutenção. Duas coisas precisam vir de lista: os enums, que o engine não expõe numa API estável, e as funções de comportamento do Power Apps (`Set`, `Notify`, `Navigate`, `Collect`…), que o engine core desconhece porque quem as registra é o host.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
