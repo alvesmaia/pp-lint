@@ -153,11 +153,14 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void UnsupportedFormatExitsWithTwo()
+    public void JsonFormatIsProducedEndToEnd()
     {
-        var (code, _, err) = Invoke("check", CreateMsapp(), "--format", "json");
+        // Este teste guardava a promessa não cumprida ("será entregue na Fase 2c").
+        // Agora guarda o contrário: o formato existe e sai pelo stdout.
+        var (code, saida, _) = Invoke("check", CreateMsapp(), "--format", "json");
 
-        Assert.Equal(2, code);
-        Assert.Contains("Fase 2", err);
+        // 0 ou 1 conforme haja achado; 2 seria o formato recusado.
+        Assert.NotEqual(2, code);
+        Assert.Contains("\"schemaVersion\"", saida);
     }
 }

@@ -92,12 +92,6 @@ public static class Program
     private static int RunCheck(
         CliOptions options, TextWriter stdout, TextWriter stderr, string workingDirectory)
     {
-        if (options.Format != "text")
-        {
-            stderr.WriteLine($"O formato '{options.Format}' será entregue na Fase 2c. Use 'text'.");
-            return 2;
-        }
-
         PpLintConfig config;
         bool usedConfigFile;
         try
@@ -149,7 +143,16 @@ public static class Program
         var run = AnalysisRun.From(resultados, stopwatch.Elapsed);
         var useColor = !options.NoColor && !Console.IsOutputRedirected;
 
-        stdout.Write(TextReporter.Render(run, useColor, options.Quiet));
+        var saida = options.Format switch
+        {
+            "json" => JsonReporter.Render(run),
+            _ => TextReporter.Render(run, useColor, options.Quiet),
+        };
+
+        if (options.Output is not null)
+            File.WriteAllText(options.Output, saida);
+        else
+            stdout.Write(saida);
 
         if (!usedConfigFile && run.AllDiagnostics.Any(d => d.Category == RuleCategory.Naming))
         {
