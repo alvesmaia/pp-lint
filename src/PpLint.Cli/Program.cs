@@ -2,6 +2,7 @@ using System.Diagnostics;
 using PpLint.Core;
 using PpLint.Core.Configuration;
 using PpLint.Core.Model;
+using PpLint.Core.Reporting;
 using PpLint.Core.Rules;
 using PpLint.Core.Scoring;
 using PpLint.Core.Suppression;
@@ -98,8 +99,7 @@ public static class Program
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var diagnostics = new List<Diagnostic>();
-        var tallies = new List<RuleTally>();
+        var resultados = new List<(string Path, LintResult Result)>();
         var engine = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly);
 
         foreach (var path in options.Paths)
@@ -129,18 +129,17 @@ public static class Program
                 return 2;
             }
 
-            diagnostics.AddRange(result.Diagnostics);
-            tallies.AddRange(result.Tallies);
+            resultados.Add((path, result));
         }
 
         stopwatch.Stop();
 
-        var compliance = ComplianceScorer.Compute(tallies);
+        var run = AnalysisRun.From(resultados, stopwatch.Elapsed);
         var useColor = !options.NoColor && !Console.IsOutputRedirected;
 
-        stdout.Write(TextReporter.Render(diagnostics, compliance, stopwatch.Elapsed, useColor, options.Quiet));
+        stdout.Write(TextReporter.Render(run, useColor, options.Quiet));
 
-        if (!usedConfigFile && diagnostics.Any(d => d.Category == RuleCategory.Naming))
+        if (!usedConfigFile && run.AllDiagnostics.Any(d => d.Category == RuleCategory.Naming))
         {
             stderr.WriteLine(
                 $"Nota: usando o preset de nomenclatura '{config.PresetName}' porque não há {ConfigLocator.FileName}. "
@@ -148,7 +147,7 @@ public static class Program
                 + $"Crie um {ConfigLocator.FileName} com [pp-lint] preset = \"...\" para escolher outro.");
         }
 
-        return diagnostics.Any(d => d.Severity >= config.FailOn) ? 1 : 0;
+        return run.AllDiagnostics.Any(d => d.Severity >= config.FailOn) ? 1 : 0;
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using PpLint.Core;
 using PpLint.Core.Rules;
 using PpLint.Core.Scoring;
+using PpLint.Core.Reporting;
 
 namespace PpLint.Cli.Tests;
 
@@ -10,14 +11,20 @@ public class TextReporterTests
         new(ruleId, RuleCategory.Naming, severity, message,
             new SourceLocation("MinhaSolucao.zip", "CanvasApps/App.msapp", symbol, 0, 0));
 
-    private static ComplianceReport Compliance() =>
-        ComplianceScorer.Compute([
+    private static IReadOnlyList<RuleTally> Tallies() =>
+        [
             new RuleTally("NM010", RuleCategory.Naming, Severity.Error, 100, 2),
             new RuleTally("PF101", RuleCategory.PowerFx, Severity.Warning, 50, 0),
-        ]);
+        ];
+
+    /// <summary>Uma execução de um artefato só, que é o caso comum.</summary>
+    private static AnalysisRun RunOf(IReadOnlyList<Diagnostic> diagnostics, double segundos) =>
+        AnalysisRun.From(
+            [("a.msapp", new LintResult(diagnostics, Tallies()))],
+            TimeSpan.FromSeconds(segundos));
 
     private static string Render(params Diagnostic[] diagnostics) =>
-        TextReporter.Render(diagnostics, Compliance(), TimeSpan.FromSeconds(1.2), useColor: false, quiet: false);
+        TextReporter.Render(RunOf(diagnostics, 1.2), useColor: false, quiet: false);
 
     [Fact]
     public void Render_ShowsRuleIdSeverityAndMessage()
@@ -84,8 +91,8 @@ public class TextReporterTests
     public void Render_QuietOmitsIndividualDiagnostics()
     {
         var output = TextReporter.Render(
-            [Diag("NM010", Severity.Error, "Screen1", "mensagem detalhada")],
-            Compliance(), TimeSpan.FromSeconds(1), useColor: false, quiet: true);
+            RunOf([Diag("NM010", Severity.Error, "Screen1", "mensagem detalhada")], 1),
+            useColor: false, quiet: true);
 
         Assert.DoesNotContain("mensagem detalhada", output);
         Assert.Contains("Conformidade geral", output);
@@ -94,7 +101,7 @@ public class TextReporterTests
     [Fact]
     public void Render_NoDiagnosticsShowsCleanMessage()
     {
-        var output = TextReporter.Render([], Compliance(), TimeSpan.FromSeconds(1), useColor: false, quiet: false);
+        var output = TextReporter.Render(RunOf([], 1), useColor: false, quiet: false);
         Assert.Contains("Nenhum achado", output);
     }
 
@@ -102,8 +109,8 @@ public class TextReporterTests
     public void Render_WithColorEmitsAnsiCodes()
     {
         var output = TextReporter.Render(
-            [Diag("NM010", Severity.Error, "A", "a")],
-            Compliance(), TimeSpan.FromSeconds(1), useColor: true, quiet: false);
+            RunOf([Diag("NM010", Severity.Error, "A", "a")], 1),
+            useColor: true, quiet: false);
 
         Assert.Contains("\u001b[", output);
     }
@@ -124,5 +131,85 @@ public class TextReporterTests
             index += needle.Length;
         }
         return count;
+    }
+}
+public class PerArtifactComplianceTests
+{
+    private static SourceLocation Loc(string artifact) => new(artifact, "e.json", "S", 0, 0);
+
+    private static LintResult Result(string artifact, int evaluated, int violations)
+    {
+        var diagnostics = Enumerable.Range(0, violations)
+            .Select(_ => new Diagnostic(
+                "NM010", RuleCategory.Naming, Severity.Warning, "nome padrão", Loc(artifact)))
+            .ToList();
+
+        return new LintResult(
+            diagnostics,
+            [new RuleTally("NM010", RuleCategory.Naming, Severity.Warning, evaluated, violations)]);
+    }
+
+    private static string Render(params (string Path, LintResult Result)[] results) =>
+        TextReporter.Render(AnalysisRun.From(results, TimeSpan.FromSeconds(1)), useColor: false, quiet: true);
+
+    [Fact]
+    public void SingleArtifactShowsOnlyTheOverallScore()
+    {
+        // Com um artefato só, o índice dele e o geral são o mesmo número.
+        // Imprimir os dois seria repetir a mesma informação em duas linhas.
+        var texto = Render(("a.msapp", Result("a.msapp", 10, 1)));
+
+        Assert.Contains("Conformidade geral", texto);
+        Assert.DoesNotContain("Por artefato", texto);
+    }
+
+    [Fact]
+    public void SeveralArtifactsGetOneLineEach()
+    {
+        var texto = Render(
+            ("a.msapp", Result("a.msapp", 10, 1)),
+            ("b.msapp", Result("b.msapp", 10, 9)));
+
+        Assert.Contains("Por artefato", texto);
+        Assert.Contains("a.msapp", texto);
+        Assert.Contains("b.msapp", texto);
+        Assert.Contains("90,0%", texto);
+        Assert.Contains("10,0%", texto);
+    }
+
+    [Fact]
+    public void OverallStillAppearsWithSeveralArtifacts()
+    {
+        var texto = Render(
+            ("a.msapp", Result("a.msapp", 10, 1)),
+            ("b.msapp", Result("b.msapp", 10, 9)));
+
+        Assert.Contains("Conformidade geral", texto);
+    }
+}
+
+public class PerArtifactSpacingTests
+{
+    private static SourceLocation Loc(string a) => new(a, "e.json", "S", 0, 0);
+
+    private static LintResult Result(string artifact) =>
+        new([], [new RuleTally("NM010", RuleCategory.Naming, Severity.Warning, 10, 1)]);
+
+    [Fact]
+    public void PerArtifactBlockIsSeparatedFromTheOverallScore()
+    {
+        // Sem a linha em branco, o último artefato cola em "Conformidade geral"
+        // e os dois blocos viram um só aos olhos de quem lê.
+        var texto = TextReporter.Render(
+            AnalysisRun.From(
+                [("a.msapp", Result("a.msapp")), ("b.msapp", Result("b.msapp"))],
+                TimeSpan.Zero),
+            useColor: false, quiet: true);
+
+        var linhas = texto.Replace("\r\n", "\n").Split('\n');
+        var geral = Array.FindIndex(linhas, l => l.Contains("Conformidade geral"));
+
+        Assert.True(geral > 0, "não achei a linha da conformidade geral");
+        Assert.Equal(string.Empty, linhas[geral - 1].Trim());
     }
 }

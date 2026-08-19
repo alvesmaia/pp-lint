@@ -1,4 +1,5 @@
 using System.Globalization;
+using PpLint.Core.Reporting;
 using System.Text;
 using PpLint.Core;
 using PpLint.Core.Scoring;
@@ -9,22 +10,44 @@ public static class TextReporter
 {
     private static readonly CultureInfo Br = CultureInfo.GetCultureInfo("pt-BR");
 
-    public static string Render(
-        IReadOnlyList<Diagnostic> diagnostics,
-        ComplianceReport compliance,
-        TimeSpan elapsed,
-        bool useColor,
-        bool quiet)
+    public static string Render(AnalysisRun run, bool useColor, bool quiet)
     {
         var sb = new StringBuilder();
 
         if (!quiet)
-            RenderDiagnostics(sb, diagnostics, useColor);
+            RenderDiagnostics(sb, run.AllDiagnostics, useColor);
 
-        RenderCompliance(sb, compliance, useColor);
-        RenderSummary(sb, diagnostics, elapsed);
+        RenderPerArtifact(sb, run, useColor);
+        RenderCompliance(sb, run.Compliance, useColor);
+        RenderSummary(sb, run.AllDiagnostics, run.Elapsed);
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Uma linha por artefato, só quando há mais de um. Com um artefato só, este
+    /// número é idêntico ao geral logo abaixo, e repeti-lo é ruído.
+    /// </summary>
+    private static void RenderPerArtifact(StringBuilder sb, AnalysisRun run, bool color)
+    {
+        if (run.Artifacts.Count < 2)
+            return;
+
+        sb.AppendLine();
+        sb.AppendLine("  Por artefato:");
+
+        var largura = run.Artifacts.Max(a => a.Path.Length);
+
+        foreach (var artifact in run.Artifacts)
+        {
+            var percent = Percent(artifact.Compliance.Overall.Percent);
+            sb.Append("    ")
+              .Append(artifact.Path.PadRight(largura))
+              .Append("  ")
+              .AppendLine(color ? AnsiColors.Bold + percent + AnsiColors.Reset : percent);
+        }
+
+        sb.AppendLine();
     }
 
     private static void RenderDiagnostics(StringBuilder sb, IReadOnlyList<Diagnostic> diagnostics, bool color)
