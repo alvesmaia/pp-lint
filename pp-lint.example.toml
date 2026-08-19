@@ -1,0 +1,33 @@
+# Copie para pp-lint.toml na raiz do repositório e ajuste.
+# O pp-lint procura este arquivo no diretório atual e nos ancestrais.
+
+[pp-lint]
+# Convenção de nomenclatura. Opções: "camel-prefix" (btnSalvar) ou "pascal-type" (ButtonSalvar).
+preset = "camel-prefix"
+
+# Regras a executar. Vazio ou ausente = todas. Aceita ID (PF101) ou categoria (NM).
+# select = ["NM", "PF"]
+
+# Regras a nunca executar. Vence o select.
+ignore = []
+
+# Severidade a partir da qual o processo termina com código 1.
+fail-on = "error"
+
+# Ajustes pontuais de severidade, sem desligar a regra.
+[pp-lint.severity-overrides]
+# NM011 = "info"
+
+# Sobrescreve apenas os padrões que você mencionar; o resto vem do preset.
+[pp-lint.naming]
+# global-variable = "^var[A-Z][A-Za-z0-9]*$"
+# screen = "^scr[A-Z][A-Za-z0-9]*$"
+
+# Prefixo esperado por tipo de controle. Também sobrescreve só o que mencionar.
+[pp-lint.naming.control-prefixes]
+# button = "btn"
+# toggleSwitch = "tgl"
+
+# Regras que não se aplicam a determinados artefatos.
+[pp-lint.per-artifact-ignores]
+# "**/Legado*.msapp" = ["NM010", "NM011"]
