@@ -61,6 +61,9 @@ public sealed record PpLintConfig
     public IReadOnlyDictionary<string, Severity> SeverityOverrides { get; init; } =
         new Dictionary<string, Severity>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Nome do preset de nomenclatura em vigor, para exibição e diagnóstico.</summary>
+    public string PresetName { get; init; } = "camel-prefix";
+
     public NamingConfig Naming { get; init; } = new();
 
     public static PpLintConfig Default { get; } = new();
