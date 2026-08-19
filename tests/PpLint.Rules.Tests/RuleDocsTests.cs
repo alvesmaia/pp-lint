@@ -73,4 +73,21 @@ public class RuleDocsTests
             Assert.False(string.IsNullOrWhiteSpace(doc.Summary), $"{id} sem resumo");
         }
     }
+    [Fact]
+    public void EveryEmbeddedDocumentIsAlsoPublishedInTheRepository()
+    {
+        // O helpUri do SARIF aponta para docs/rules/<ID>.md no GitHub. Documento
+        // que existe só embarcado vira link quebrado para quem clicou querendo
+        // entender o achado.
+        var raiz = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+        var pasta = Path.Combine(raiz, "docs", "rules");
+
+        Assert.True(Directory.Exists(pasta), $"pasta não encontrada: {pasta}");
+
+        var ausentes = RuleDocs.AvailableIds()
+            .Where(id => !File.Exists(Path.Combine(pasta, id + ".md")))
+            .ToList();
+
+        Assert.Empty(ausentes);
+    }
 }

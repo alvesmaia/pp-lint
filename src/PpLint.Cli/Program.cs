@@ -250,7 +250,7 @@ public static class Program
           --config <arquivo>                    usa este pp-lint.toml em vez de procurar
           --select <IDs>                        só estas regras (ID ou categoria, separados por vírgula)
           --ignore <IDs>                        nunca estas regras; vence o --select
-          --format <text|json|sarif|html|md>    formato de saída (padrão: text)
+          --format <text|json|sarif>            formato de saída (padrão: text)
           --output <arquivo>                    grava a saída em arquivo
           --fail-on <error|warning|info>        severidade que retorna código 1 (padrão: error)
           --no-color                            desativa cores

@@ -97,6 +97,33 @@ apps de tamanhos diferentes.
 
 `pp-lint rules` lista o catálogo instalado.
 
+`pp-lint explain <ID>` imprime a documentação completa de uma regra — o que ela pega, por
+que importa e um exemplo ruim e um bom. Os mesmos textos estão em [`docs/rules/`](docs/rules/).
+
+## Formatos de saída
+
+| Formato | Para quê |
+|---|---|
+| `text` | leitura no terminal, com índice de conformidade (padrão) |
+| `json` | automação; o esquema é versionado no campo `schemaVersion` |
+| `sarif` | anotação inline no pull request e aba Security do GitHub |
+
+Com vários artefatos na mesma execução, o relatório de texto mostra o índice de cada um
+antes do geral.
+
+Exemplo de uso em GitHub Actions:
+
+```yaml
+- run: pp-lint check solucao.zip --format sarif --output pp-lint.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: pp-lint.sarif
+```
+
+O SARIF aponta o achado para o arquivo do artefato, sem número de linha: o `.msapp` guarda
+as fórmulas dentro de JSON gerado pelo Studio, e o extractor ainda não registra o offset.
+A entrada do pacote e o nome do controle viajam em `logicalLocations`.
+
 ### Como o pp-lint entende variáveis
 
 Variáveis de contexto pertencem a uma tela — é assim que o Power Fx funciona.
