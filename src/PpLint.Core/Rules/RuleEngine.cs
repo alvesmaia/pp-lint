@@ -1,5 +1,6 @@
 using System.Reflection;
 using PpLint.Core.Model;
+using PpLint.Core.Suppression;
 
 namespace PpLint.Core.Rules;
 
@@ -33,8 +34,12 @@ public sealed class RuleEngine
         return new RuleEngine(rules);
     }
 
-    public LintResult Run(PowerPlatformProject project, PpLintConfig config)
+    public LintResult Run(
+        PowerPlatformProject project,
+        PpLintConfig config,
+        SuppressionIndex? suppressions = null)
     {
+        var index = suppressions ?? SuppressionIndex.Empty;
         var diagnostics = new List<Diagnostic>();
         var tallies = new List<RuleTally>();
 
@@ -47,7 +52,7 @@ public sealed class RuleEngine
                 ? overridden
                 : meta.DefaultSeverity;
 
-            var ctx = new LintContext(meta.Id, meta.Category, severity, project, config, diagnostics);
+            var ctx = new LintContext(meta.Id, meta.Category, severity, project, config, diagnostics, index);
             var before = diagnostics.Count;
 
             try
