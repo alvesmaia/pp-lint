@@ -3995,7 +3995,7 @@ public sealed class VariableGraph
     /// <summary>O primeiro argumento da chamada, quando é um identificador simples.</summary>
     private static FirstNameNode? FirstArgumentIdentifier(CallNode call)
     {
-        var args = call.Args?.Children;
+        var args = call.Args?.ChildNodes;
         if (args is null || args.Count == 0)
             return null;
 
@@ -4004,7 +4004,7 @@ public sealed class VariableGraph
 }
 ```
 
-> Se a versão instalada do pacote expuser os argumentos como `call.Args.ChildNodes` em vez de `call.Args.Children`, ajuste apenas essa linha.
+> Se a versão instalada do pacote expuser os argumentos como x, ajuste apenas essa linha.
 
 - [ ] **Step 4: Rodar e confirmar que passa**
 
@@ -4321,7 +4321,7 @@ public sealed class ConstantConditionRule : IRule
 
         foreach (var call in AstWalker.Calls(root, "If"))
         {
-            var args = call.Args?.Children;
+            var args = call.Args?.ChildNodes;
             if (args is { Count: > 0 } && seen.Add(args[0]))
                 yield return args[0];
         }
