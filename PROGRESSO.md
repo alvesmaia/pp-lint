@@ -116,3 +116,14 @@ depende dele. Dois testes ficam pulados até lá.
 6. **Não crie `pp-lint.toml` na raiz deste repositório** — só o
    `pp-lint.example.toml`. Um teste de integração verifica o comportamento na
    ausência de configuração e falharia sem nada ter quebrado no produto.
+
+## Fase FL — concluída
+
+Sete regras de Power Automate (FL202, FL203, FL210, FL222, FL230, FL240, FL241) e o
+grafo de execução derivado de `runAfter`. O catálogo passou de 21 para 28 regras.
+Plano: `docs/superpowers/plans/2026-08-19-pp-lint-fase-fl.md`.
+
+Primeira fase desenhada contra um artefato real desde o início, e a primeira em que o
+artefato real não encontrou defeito nenhum nas regras: os dois achados no fluxo do
+fixture (sem tratamento de falha, sem descrição) e os cinco silêncios foram conferidos
+linha a linha no JSON.

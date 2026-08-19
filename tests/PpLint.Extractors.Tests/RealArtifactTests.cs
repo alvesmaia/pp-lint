@@ -207,4 +207,32 @@ public class RealArtifactTests
             project.Flows.Any(f => f.AllActions().Any()),
             "Nenhum fluxo trouxe ações — verifique properties.definition.actions.");
     }
+    [SkippableFact]
+    public void RealSolution_FlowRulesMatchWhatTheFileShows()
+    {
+        var path = SolutionFixture();
+        Skip.If(path is null, "Fixture não encontrado.");
+
+        var project = ProjectLoader.Load(path!);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        var ids = result.Diagnostics.Select(d => d.RuleId).ToList();
+
+        // Todo runAfter do arquivo exige "Succeeded", e não há campo description
+        // em lugar nenhum — os dois achados foram conferidos linha a linha.
+        Assert.Contains("FL210", ids);
+        Assert.Contains("FL240", ids);
+
+        // E os silêncios, que valem tanto quanto os achados: os dois Foreach são
+        // irmãos de topo e não aninhados; a recorrência é diária; todo runAfter
+        // aponta para ação existente; as saídas de Send_to_Email e Filter_array
+        // são consumidas por outputs() e body(); e as duas variáveis são
+        // inicializadas antes do laço que as usa.
+        Assert.DoesNotContain("FL222", ids);
+        Assert.DoesNotContain("FL230", ids);
+        Assert.DoesNotContain("FL241", ids);
+        Assert.DoesNotContain("FL203", ids);
+        Assert.DoesNotContain("FL202", ids);
+    }
 }

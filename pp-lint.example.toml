@@ -37,3 +37,8 @@ fail-on = "error"
 # uma solução .zip nem ao rodar sobre um diretório.
 [pp-lint.per-artifact-ignores]
 # "**/Legado*.msapp" = ["NM010", "NM011"]
+
+# Limiares numéricos das regras.
+[pp-lint.thresholds]
+# Recorrência mais frequente que isto (em minutos) vira aviso da FL230.
+# min-recurrence-minutes = 15
