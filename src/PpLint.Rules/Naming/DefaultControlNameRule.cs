@@ -19,6 +19,9 @@ public sealed class DefaultControlNameRule : IRule
         {
             foreach (var control in app.AllControls())
             {
+                if (ctx.Config.Naming.GeneratedControlTemplates.Contains(control.TemplateName))
+                    continue;
+
                 ctx.Evaluated(1);
 
                 if (HasDefaultName(control))

@@ -157,3 +157,33 @@ public class MsappExtractorTests
         Assert.Empty(app.DataSources);
     }
 }
+
+public class DataSourceLocationTests
+{
+    private const string Controls =
+        """{ "TopParent": { "Name": "scrHome", "Template": { "Name": "screen" }, "Children": [] } }""";
+
+    private const string DataSources = """
+    { "DataSources": [ { "Name": "Office365Users", "Type": "ServiceInfo" } ] }
+    """;
+
+    [Fact]
+    public void ReadsDataSourcesFromReferencesFolder()
+    {
+        // Caminho usado pelo Power Apps Studio atual.
+        var zip = TestZip.Create(("Controls/1.json", Controls), ("References/DataSources.json", DataSources));
+        using var src = ArtifactSourceFactory.Open(zip);
+
+        var ds = Assert.Single(MsappExtractor.Extract(src, "App.msapp", "A").DataSources);
+        Assert.Equal("Office365Users", ds.Name);
+    }
+
+    [Fact]
+    public void StillReadsLegacyDataSourcesFolder()
+    {
+        var zip = TestZip.Create(("Controls/1.json", Controls), ("DataSources/DataSources.json", DataSources));
+        using var src = ArtifactSourceFactory.Open(zip);
+
+        Assert.Single(MsappExtractor.Extract(src, "App.msapp", "A").DataSources);
+    }
+}

@@ -1,25 +1,32 @@
 # Fixtures de artefatos reais
 
-Coloque aqui soluções exportadas reais, com dados anonimizados, para validar
-os extractors contra o formato de verdade — e não apenas contra os JSONs
-sintéticos usados nos testes unitários.
+Os testes unitários usam JSONs sintéticos, construídos a partir da documentação
+do formato. Eles provam que o código faz o que projetamos — não que um artefato
+real é como projetamos. Estes fixtures fecham essa lacuna.
 
-Convenção de nomes:
+## `chess-real.msapp` (versionado)
 
-- `solucao-exemplo.zip` — solução exportada com ao menos um canvas app e um cloud flow.
+Canvas app real gerado pelo Power Apps Studio, com 301 controles e 827 expressões
+Power Fx. Vem de `src/PAModelTests/Apps/Chess_for_Power_Apps_v1.03.msapp` do
+repositório [microsoft/PowerApps-Tooling](https://github.com/microsoft/PowerApps-Tooling),
+licença MIT — a ferramenta oficial de pack/unpack da Microsoft, que o usa como
+fixture dos próprios testes.
 
-Os testes que dependem destes arquivos são pulados automaticamente quando eles
-não existem, para que a suíte continue verde em quem clonou o repositório sem
-os fixtures.
+Foi ele que revelou dois defeitos que os testes sintéticos não pegavam:
 
-Antes de commitar um fixture: remova nomes de pessoas, e-mails, URLs de
-ambiente e qualquer dado de cliente.
+- as data sources ficam em `References/DataSources.json`, não em `DataSources/DataSources.json`;
+- `galleryTemplate*` e `DataCard*` são gerados pelo Studio e não devem ser cobrados
+  por convenção de nome (16 falsos positivos num app só).
 
-## Como exportar
+## `solucao-exemplo.zip` (ausente — contribua)
 
-No Power Apps (make.powerapps.com): **Soluções → selecione a solução →
-Exportar solução → Não gerenciada**. O `.zip` baixado é exatamente o que o
-`pp-lint` consome.
+Falta uma **solução exportada** de verdade para validar o outro caminho de entrada:
+`solution.xml`, tabelas Dataverse em `Entities/*/Entity.xml` e cloud flows em
+`Workflows/*.json`. Os dois testes que dependem dela ficam pulados até então.
 
-Para incluir o schema das tabelas Dataverse (necessário para as regras NM020
-e NM021, da Fase 2), marque a opção de incluir metadados de tabela na exportação.
+Para gerar: no make.powerapps.com, **Soluções → sua solução → Exportar → Não
+gerenciada**. Marque a inclusão de metadados de tabela se quiser exercitar as
+regras de coluna. Salve o `.zip` aqui com esse nome.
+
+Antes de commitar: remova nomes de pessoas, e-mails, URLs de ambiente e qualquer
+dado de cliente.

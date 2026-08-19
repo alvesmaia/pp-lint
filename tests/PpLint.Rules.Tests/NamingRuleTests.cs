@@ -159,3 +159,55 @@ public class ControlPrefixRuleTests
         Assert.Equal(1, Assert.Single(result.Tallies).Evaluated);
     }
 }
+
+public class GeneratedControlTests
+{
+    [Fact]
+    public void NM010_IgnoresGalleryTemplateGeneratedByStudio()
+    {
+        // galleryTemplate é criado dentro de toda galeria e não é renomeável.
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("galleryTemplate6", "galleryTemplate"))));
+        var result = Run(new DefaultControlNameRule(), project);
+
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(1, Assert.Single(result.Tallies).Evaluated); // só a tela
+    }
+
+    [Fact]
+    public void NM010_IgnoresDataCardGeneratedByForm()
+    {
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("DataCard4", "dataCard"))));
+        Assert.Empty(Run(new DefaultControlNameRule(), project).Diagnostics);
+    }
+
+    [Fact]
+    public void NM011_IgnoresGeneratedControls()
+    {
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("galleryTemplate6", "galleryTemplate"))));
+        var result = Run(new ControlPrefixRule(), project);
+
+        Assert.Empty(result.Diagnostics);
+        Assert.Equal(0, Assert.Single(result.Tallies).Evaluated);
+    }
+
+    [Fact]
+    public void GeneratedTemplatesAreConfigurable()
+    {
+        // Quem quiser rigor total esvazia a lista e volta a receber os achados.
+        var config = PpLintConfig.Default with
+        {
+            Naming = new NamingConfig { GeneratedControlTemplates = new HashSet<string>() },
+        };
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("galleryTemplate6", "galleryTemplate"))));
+
+        Assert.Single(Run(new DefaultControlNameRule(), project, config).Diagnostics);
+    }
+
+    [Fact]
+    public void RealControlsAreStillReported()
+    {
+        // A exclusão não pode engolir controles que o usuário de fato criou.
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("Image1", "image"), Ctl("Slider1", "slider"))));
+        Assert.Equal(2, Run(new DefaultControlNameRule(), project).Diagnostics.Count);
+    }
+}

@@ -23,6 +23,9 @@ public sealed class ControlPrefixRule : IRule
                 if (control.IsScreen)
                     continue;
 
+                if (ctx.Config.Naming.GeneratedControlTemplates.Contains(control.TemplateName))
+                    continue;
+
                 if (!prefixes.TryGetValue(control.TemplateName, out var expected))
                     continue;
 

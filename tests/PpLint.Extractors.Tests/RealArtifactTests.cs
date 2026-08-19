@@ -4,22 +4,112 @@ using PpLint.Rules.Naming;
 namespace PpLint.Extractors.Tests;
 
 /// <summary>
-/// Valida os extractors contra uma solução exportada de verdade.
-/// Pulado automaticamente quando o fixture não está presente.
+/// Valida os extractors contra artefatos reais, não contra os JSONs sintéticos
+/// dos testes unitários. Os testes sobre o .msapp rodam sempre — o fixture é
+/// versionado. Os testes sobre solução exportada são pulados até que alguém
+/// coloque uma em tests/fixtures/ (veja o README de lá).
 /// </summary>
 public class RealArtifactTests
 {
-    private static string? FixturePath()
+    private static string FixtureDir =>
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "fixtures"));
+
+    private static string RealMsapp => Path.Combine(FixtureDir, "chess-real.msapp");
+
+    private static string? SolutionFixture()
     {
-        var candidate = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "fixtures", "solucao-exemplo.zip");
-        var full = Path.GetFullPath(candidate);
-        return File.Exists(full) ? full : null;
+        var path = Path.Combine(FixtureDir, "solucao-exemplo.zip");
+        return File.Exists(path) ? path : null;
     }
 
-    [SkippableFact]
-    public void Load_RealSolutionExtractsAppsOrFlows()
+    // ---- .msapp real, gerado pelo Power Apps Studio ----
+
+    [Fact]
+    public void RealMsapp_ExtractsScreens()
     {
-        var path = FixturePath();
+        var project = ProjectLoader.Load(RealMsapp);
+
+        var app = Assert.Single(project.Apps);
+        Assert.True(app.Screens.Count >= 5, $"esperava várias telas, veio {app.Screens.Count}");
+    }
+
+    [Fact]
+    public void RealMsapp_ExtractsControlsWithFormulas()
+    {
+        var project = ProjectLoader.Load(RealMsapp);
+        var controls = project.Apps[0].AllControls().ToList();
+
+        Assert.True(controls.Count > 100, $"esperava centenas de controles, veio {controls.Count}");
+        Assert.True(
+            controls.Count(c => c.Properties.Count > 0) > 50,
+            "quase nenhum controle trouxe fórmulas — verifique Controls/*.json e o campo InvariantScript");
+    }
+
+    [Fact]
+    public void RealMsapp_ReadsTemplateNames()
+    {
+        var project = ProjectLoader.Load(RealMsapp);
+        var templates = project.Apps[0].AllControls().Select(c => c.TemplateName).Distinct().ToList();
+
+        Assert.Contains("button", templates);
+        Assert.Contains("label", templates);
+        Assert.DoesNotContain(templates, string.IsNullOrEmpty);
+    }
+
+    [Fact]
+    public void RealMsapp_FormulasParseAsPowerFx()
+    {
+        // O parser precisa aceitar Power Fx de verdade: se a cultura ou o modo
+        // de encadeamento estiverem errados, quase tudo falharia no parse.
+        var project = ProjectLoader.Load(RealMsapp);
+        var scripts = project.Apps[0].AllControls()
+            .SelectMany(c => c.Properties)
+            .Select(p => p.Script)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+
+        var parsed = scripts.Count(s => PpLint.PowerFx.PowerFxParser.Parse(s).IsSuccess);
+
+        Assert.True(
+            parsed >= scripts.Count * 0.95,
+            $"apenas {parsed} de {scripts.Count} fórmulas reais foram parseadas");
+    }
+
+    [Fact]
+    public void RealMsapp_RulesRunAndFindKnownIssues()
+    {
+        var project = ProjectLoader.Load(RealMsapp);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        Assert.Equal(5, result.Tallies.Count);
+        Assert.All(result.Tallies, t => Assert.True(t.Violations <= t.Evaluated));
+
+        // Este app tem controles com nome padrão (Image1, Slider1, Rectangle11)
+        // e duas variáveis globais nunca lidas — achados verificados manualmente.
+        Assert.Contains(result.Diagnostics, d => d.RuleId == "NM010");
+        Assert.Contains(result.Diagnostics, d => d.RuleId == "PF101");
+    }
+
+    [Fact]
+    public void RealMsapp_DoesNotFlagStudioGeneratedControls()
+    {
+        // galleryTemplate e dataCard nascem prontos do Studio; cobrá-los por
+        // convenção de nome seria reclamar de código que ninguém escreveu.
+        var project = ProjectLoader.Load(RealMsapp);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        Assert.DoesNotContain(result.Diagnostics, d =>
+            d.Message.Contains("galleryTemplate") || d.Message.Contains("DataCard"));
+    }
+
+    // ---- solução exportada (aguardando fixture) ----
+
+    [SkippableFact]
+    public void RealSolution_ExtractsAppsOrFlows()
+    {
+        var path = SolutionFixture();
         Skip.If(path is null, "Fixture tests/fixtures/solucao-exemplo.zip não encontrado.");
 
         var project = ProjectLoader.Load(path!);
@@ -31,34 +121,16 @@ public class RealArtifactTests
     }
 
     [SkippableFact]
-    public void Load_RealSolutionAppHasControlsAndFormulas()
+    public void RealSolution_FlowsHaveActions()
     {
-        var path = FixturePath();
+        var path = SolutionFixture();
         Skip.If(path is null, "Fixture não encontrado.");
 
         var project = ProjectLoader.Load(path!);
-        Skip.If(project.Apps.Count == 0, "A solução de exemplo não contém canvas apps.");
+        Skip.If(project.Flows.Count == 0, "A solução de exemplo não contém cloud flows.");
 
-        var app = project.Apps[0];
-        Assert.NotEmpty(app.Screens);
         Assert.True(
-            app.AllControls().Any(c => c.Properties.Count > 0),
-            "Nenhum controle trouxe fórmulas Power Fx — verifique o caminho Controls/*.json e o campo InvariantScript.");
-    }
-
-    [SkippableFact]
-    public void Rules_RunOnRealSolutionWithoutCrashing()
-    {
-        var path = FixturePath();
-        Skip.If(path is null, "Fixture não encontrado.");
-
-        var project = ProjectLoader.Load(path!);
-        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
-            .Run(project, PpLint.Core.PpLintConfig.Default);
-
-        Assert.Equal(5, result.Tallies.Count);
-        Assert.True(
-            result.Tallies.Any(t => t.Evaluated > 0),
-            "Nenhuma regra examinou alvo algum numa solução real.");
+            project.Flows.Any(f => f.AllActions().Any()),
+            "Nenhum fluxo trouxe ações — verifique properties.definition.actions.");
     }
 }

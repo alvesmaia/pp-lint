@@ -132,10 +132,20 @@ public static class MsappExtractor
         }
     }
 
+    /// <summary>
+    /// O Studio grava as data sources em References/DataSources.json; versões
+    /// mais antigas do formato usavam DataSources/DataSources.json. Aceitamos as duas.
+    /// </summary>
+    private static readonly string[] DataSourceEntries =
+    [
+        "References/DataSources.json",
+        "DataSources/DataSources.json",
+    ];
+
     private static void ReadDataSources(IArtifactSource source, string artifactPath, CanvasApp app)
     {
-        const string entry = "DataSources/DataSources.json";
-        if (!source.Has(entry))
+        var entry = DataSourceEntries.FirstOrDefault(source.Has);
+        if (entry is null)
             return;
 
         try

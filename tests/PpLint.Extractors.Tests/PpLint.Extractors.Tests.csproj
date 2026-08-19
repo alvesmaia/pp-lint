@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PpLint.Extractors\PpLint.Extractors.csproj" />
     <ProjectReference Include="..\..\src\PpLint.Rules\PpLint.Rules.csproj" />
+    <ProjectReference Include="..\..\src\PpLint.PowerFx\PpLint.PowerFx.csproj" />
   </ItemGroup>
 
 </Project>
