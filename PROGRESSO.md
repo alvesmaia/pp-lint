@@ -73,9 +73,23 @@ Descoberta da execução: `Engine.GetAllFunctionNames()` não devolve as funçõ
 comportamento do Power Apps (`Set`, `Notify`, `Navigate`, `Collect`) — quem as
 registra é o host, não o engine core. Entram por lista complementar.
 
+## Fase 2b-2 — concluída
+
+Lógica redundante: comparador estrutural de AST e 8 regras (PF111–PF118).
+O catálogo passou de 13 para 21 regras. Plano:
+`docs/superpowers/plans/2026-08-19-pp-lint-fase-2b2.md`.
+
+Contra o app real, as oito regras juntas produzem 3 achados em 827 fórmulas —
+todos verificados à mão e legítimos: um `If(ThisItem.Id = 4, true, false)` e duas
+concatenações com texto vazio. O comparador estrutural criado aqui será a base da
+detecção de duplicação (DUP301).
+
+Descoberta da execução: o parser representa números escritos na fórmula como
+`DecLitNode`, não `NumLitNode` — aceitar só um dos dois faria a PF117 nunca
+disparar.
+
 ## Próximas fases
 
-- **2b-2** — lógica redundante em expressões (PF111–PF118).
 - **2b-3** — telas, componentes, fluxos, colunas (NM012–NM041, PF120–PF130).
 - **2c** — formatos JSON e SARIF, `explain` com documentação, `inspect`, índice
   por artefato.

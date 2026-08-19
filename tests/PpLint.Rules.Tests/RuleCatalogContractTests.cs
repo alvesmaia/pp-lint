@@ -91,11 +91,18 @@ public class RuleCatalogContractTests
     {
         // Projeto com um app e um fluxo, ambos com conteúdo: nenhuma regra
         // desta fase pode terminar sem ter examinado alvo algum.
+        // A fórmula precisa exercitar cada forma que as regras procuram: variável
+        // de cada tipo, If de três argumentos, If aninhado no ramo senão,
+        // comparação booleana, negação, Filter, CountRows e concatenação.
         var app = App("A", Screen("scrHome",
             Ctl("btnSalvar", "button",
                 ("OnSelect",
                  "Set(varTotal, 1); UpdateContext({locAberto: true}); ClearCollect(colItens, [1]); "
-                 + "If(varTotal > 0, Notify(\"ok\"))"))));
+                 + "If(varTotal > 0, Notify(\"ok\")); "
+                 + "Set(varA, If(locAberto, 1, If(varTotal > 0, 2, 3))); "
+                 + "Set(varB, If(locAberto = true, Not(varTotal > 0), false)); "
+                 + "Set(varC, CountRows(Filter(colItens, varTotal > 0)) > 0); "
+                 + "Set(varD, Text(varTotal) & \"x\")"))));
 
         var flow = new CloudFlow
         {

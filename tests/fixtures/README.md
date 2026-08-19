@@ -18,11 +18,17 @@ Foi ele que revelou dois defeitos que os testes sintéticos não pegavam:
 - `galleryTemplate*` e `DataCard*` são gerados pelo Studio e não devem ser cobrados
   por convenção de nome (16 falsos positivos num app só).
 
-## `solucao-exemplo.zip` (ausente — contribua)
+## `solucao-exemplo.zip` (versionado)
 
-Falta uma **solução exportada** de verdade para validar o outro caminho de entrada:
-`solution.xml`, tabelas Dataverse em `Entities/*/Entity.xml` e cloud flows em
-`Workflows/*.json`. Os dois testes que dependem dela ficam pulados até então.
+Solução exportada real, com um cloud flow de 12 ações. Vem de
+`samples/ai-time-management-flow` do repositório
+[pnp/powerplatform-samples](https://github.com/pnp/powerplatform-samples),
+licença MIT.
+
+Valida o caminho que os fixtures sintéticos não cobriam: `solution.xml`,
+`customizations.xml` e `Workflows/*.json`. Ainda não cobre tabelas Dataverse —
+esta solução não exporta entidades —, então as regras de coluna (NM020–NM023)
+seguem sem validação contra artefato real.
 
 Para gerar: no make.powerapps.com, **Soluções → sua solução → Exportar → Não
 gerenciada**. Marque a inclusão de metadados de tabela se quiser exercitar as

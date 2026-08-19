@@ -156,7 +156,29 @@ public class RealArtifactTests
             + string.Join(", ", achados.Take(15).Select(d => d.Message)));
     }
 
-    // ---- solução exportada (aguardando fixture) ----
+    // ---- solução exportada real ----
+
+    [SkippableFact]
+    public void RealSolution_ExtractsManifestAndFlowInDepth()
+    {
+        var path = SolutionFixture();
+        Skip.If(path is null, "Fixture não encontrado.");
+
+        var project = ProjectLoader.Load(path!);
+
+        // Solução real da PnP: manifesto, um cloud flow com gatilho de
+        // recorrência, doze ações e duas variáveis inicializadas.
+        Assert.Equal("AITimeManagementFlow", project.Solution!.UniqueName);
+        Assert.Equal("ms", project.Solution.PublisherPrefix);
+        Assert.False(project.Solution.Managed);
+
+        var flow = Assert.Single(project.Flows);
+        Assert.Equal("Recurrence", flow.Trigger!.Type);
+        Assert.True(
+            flow.AllActions().Count() >= 10,
+            $"esperava várias ações, veio {flow.AllActions().Count()}");
+        Assert.Equal(2, flow.Variables.Count);
+    }
 
     [SkippableFact]
     public void RealSolution_ExtractsAppsOrFlows()
