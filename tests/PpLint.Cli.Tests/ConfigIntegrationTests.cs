@@ -183,3 +183,59 @@ public class ConfigIntegrationTests : IDisposable
         Assert.DoesNotContain("NM011", output);
     }
 }
+
+public class InvalidRegexTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), $"pplint-rx-{Guid.NewGuid():N}");
+
+    public InvalidRegexTests() => Directory.CreateDirectory(_dir);
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_dir))
+            Directory.Delete(_dir, recursive: true);
+    }
+
+    [Fact]
+    public void InvalidNamingRegexExitsWithTwoInsteadOfCrashing()
+    {
+        // Regex quebrado vinha de uma regra, e o catch do Program só cobria o
+        // carregamento da configuração: o processo morria com stack trace.
+        var app = Path.Combine(_dir, "App.msapp");
+        using (var fs = File.Create(app))
+        using (var zip = new System.IO.Compression.ZipArchive(fs, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            var entry = zip.CreateEntry("Controls/1.json");
+            using var writer = new StreamWriter(entry.Open(), Encoding.UTF8);
+            writer.Write("""
+            {
+              "TopParent": {
+                "Name": "scrHome",
+                "Template": { "Name": "screen" },
+                "Children": [
+                  {
+                    "Name": "btnOk",
+                    "Template": { "Name": "button" },
+                    "Rules": [ { "Property": "OnSelect", "InvariantScript": "Set(varX, 1)" } ],
+                    "Children": []
+                  }
+                ]
+              }
+            }
+            """);
+        }
+
+        var config = Path.Combine(_dir, "pp-lint.toml");
+        File.WriteAllText(config, """
+            [pp-lint.naming]
+            global-variable = "^var([A-Z"
+            """);
+
+        var stdout = new StringWriter();
+        var stderr = new StringWriter();
+        var code = Program.Run(["check", app, "--config", config, "--no-color"], stdout, stderr, _dir);
+
+        Assert.Equal(2, code);
+        Assert.Contains("global-variable", stderr.ToString());
+    }
+}

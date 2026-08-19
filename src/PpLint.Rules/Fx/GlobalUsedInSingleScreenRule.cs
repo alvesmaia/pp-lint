@@ -21,9 +21,19 @@ public sealed class GlobalUsedInSingleScreenRule : IRule
 
             foreach (var variable in graph.Definitions.Where(d => d.Kind == VariableKind.Global))
             {
-                var screens = graph.ScreensReading(variable.Name);
-                if (screens.Count == 0)
+                // Global nunca lida é assunto da PF101; não entra na conta aqui.
+                if (graph.ScreensReading(variable.Name).Count == 0)
                     continue;
+
+                // Escrita em App.OnStart não tem como virar contexto: UpdateContext
+                // não funciona ali. Sugerir a troca seria conselho impossível.
+                if (graph.IsWrittenAtAppLevel(variable.Name))
+                    continue;
+
+                // Para decidir se caberia contexto, contam as telas que leem OU
+                // escrevem: Set numa tela e leitura em outra é justamente o caso
+                // em que variável de contexto não resolveria.
+                var screens = graph.ScreensTouching(variable.Name);
 
                 ctx.Evaluated(1);
 

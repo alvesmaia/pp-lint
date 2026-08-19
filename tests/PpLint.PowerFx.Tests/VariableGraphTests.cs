@@ -64,8 +64,11 @@ public class VariableGraphTests
     [Fact]
     public void NavigateDefinesContextVariableOnTheDestinationScreen()
     {
-        // A variável nasce na tela de destino, não na de origem.
-        var graph = VariableGraph.Build(AppWith(("scrA", "OnSelect", "Navigate(scrB, Fade, {locId: 7})")));
+        // A variável nasce na tela de destino, não na de origem. A tela precisa
+        // existir: navegação dinâmica cai no fallback e é testada à parte.
+        var graph = VariableGraph.Build(AppWith(
+            ("scrA", "OnSelect", "Navigate(scrB, Fade, {locId: 7})"),
+            ("scrB", "Text", "\"x\"")));
 
         var v = Assert.Single(graph.Definitions);
         Assert.Equal("locId", v.Name);
@@ -251,5 +254,104 @@ public class VariableGraphCacheTests
         Assert.NotSame(primeiro, segundo);
         Assert.Equal(["varA"], primeiro.Definitions.Select(d => d.Name));
         Assert.Equal(["varB"], segundo.Definitions.Select(d => d.Name));
+    }
+}
+
+public class VariableGraphScopeAndSourceTests
+{
+    private static SourceLocation Loc(string? s) => new("a.msapp", "Controls/1.json", s, 0, 0);
+
+    private static CanvasApp AppWith(
+        string[] dataSources,
+        params (string Screen, string Property, string Script)[] formulas)
+    {
+        var app = new CanvasApp { Name = "App", Location = Loc(null) };
+
+        foreach (var ds in dataSources)
+            app.DataSources.Add(new DataSource(ds, "SharePoint", ["Title"]));
+
+        foreach (var screenName in formulas.Select(f => f.Screen).Distinct())
+        {
+            var screen = new Control
+            {
+                Name = screenName, TemplateName = "screen", IsScreen = true, Location = Loc(screenName),
+            };
+            var button = new Control
+            {
+                Name = $"btn{screenName}", TemplateName = "button", Location = Loc($"btn{screenName}"),
+            };
+
+            foreach (var (_, property, script) in formulas.Where(f => f.Screen == screenName))
+                button.Properties.Add(new PowerFxProperty(property, script, Loc($"btn{screenName}.{property}")));
+
+            screen.AddChild(button);
+            app.Screens.Add(screen);
+        }
+
+        return app;
+    }
+
+    [Fact]
+    public void CollectIntoARealDataSourceIsNotACollection()
+    {
+        // Collect(Ativos, {...}) grava numa lista do SharePoint; Ativos não é
+        // coleção e não pode ser cobrada por convenção 'col' nem por desuso.
+        var graph = VariableGraph.Build(AppWith(
+            ["Ativos"],
+            ("scrA", "OnSelect", "Collect(Ativos, {Title: \"x\"})")));
+
+        Assert.DoesNotContain(graph.Definitions, d => d.Kind == VariableKind.Collection);
+    }
+
+    [Fact]
+    public void CollectIntoANewNameIsStillACollection()
+    {
+        var graph = VariableGraph.Build(AppWith(
+            [],
+            ("scrA", "OnSelect", "ClearCollect(colItens, [1])")));
+
+        Assert.Single(graph.Definitions, d => d.Kind == VariableKind.Collection);
+    }
+
+    [Fact]
+    public void ContextVariableWithTheSameNameOnTwoScreensIsTwoDefinitions()
+    {
+        // locX de scrA e locX de scrB são variáveis diferentes; guardar só uma
+        // faria a PF102 perder o achado da outra.
+        var graph = VariableGraph.Build(AppWith(
+            [],
+            ("scrA", "OnSelect", "UpdateContext({locX: 1})"),
+            ("scrA", "Text", "locX"),
+            ("scrB", "OnSelect", "UpdateContext({locX: 2})")));
+
+        var contexto = graph.Definitions.Where(d => d.Kind == VariableKind.Context).ToList();
+
+        Assert.Equal(2, contexto.Count);
+        Assert.Equal(["scrA", "scrB"], contexto.Select(d => d.Screen).Order());
+    }
+
+    [Fact]
+    public void NavigateToANameThatIsNotAScreenFallsBackToTheCurrentScreen()
+    {
+        // Navegação dinâmica: o destino é uma variável, não uma tela. Arquivar a
+        // variável de contexto sob 'varProximaTela' faria a PF102 acusá-la sempre.
+        var graph = VariableGraph.Build(AppWith(
+            [],
+            ("scrA", "OnSelect", "Navigate(varProximaTela, Fade, {locId: 7})")));
+
+        var contexto = Assert.Single(graph.Definitions.Where(d => d.Kind == VariableKind.Context).ToList());
+        Assert.Equal("scrA", contexto.Screen);
+    }
+
+    [Fact]
+    public void NavigateToARealScreenStillFilesOnTheDestination()
+    {
+        var graph = VariableGraph.Build(AppWith(
+            [],
+            ("scrA", "OnSelect", "Navigate(scrB, Fade, {locId: 7})"),
+            ("scrB", "Text", "\"x\"")));
+
+        var contexto = Assert.Single(graph.Definitions.Where(d => d.Kind == VariableKind.Context).ToList());
+        Assert.Equal("scrB", contexto.Screen);
     }
 }

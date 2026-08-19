@@ -24,15 +24,21 @@ public sealed class VariableGraph
 {
     private readonly Dictionary<string, VariableDefinition> _definitions;
     private readonly Dictionary<string, HashSet<string>> _readsByScreen;
+    private readonly Dictionary<string, HashSet<string>> _writesByScreen;
+    private readonly HashSet<string> _writtenAtAppLevel;
     private readonly List<VariableReference> _unresolved;
 
     private VariableGraph(
         Dictionary<string, VariableDefinition> definitions,
         Dictionary<string, HashSet<string>> readsByScreen,
+        Dictionary<string, HashSet<string>> writesByScreen,
+        HashSet<string> writtenAtAppLevel,
         List<VariableReference> unresolved)
     {
         _definitions = definitions;
         _readsByScreen = readsByScreen;
+        _writesByScreen = writesByScreen;
+        _writtenAtAppLevel = writtenAtAppLevel;
         _unresolved = unresolved;
     }
 
@@ -53,6 +59,30 @@ public sealed class VariableGraph
         _readsByScreen.TryGetValue(name, out var screens) ? screens.ToList() : [];
 
     /// <summary>
+    /// A variável é escrita fora de qualquer tela — App.OnStart, por exemplo.
+    /// Ali UpdateContext não existe, então sugerir contexto seria conselho impossível.
+    /// </summary>
+    public bool IsWrittenAtAppLevel(string name) => _writtenAtAppLevel.Contains(name);
+
+    /// <summary>
+    /// Telas que leem OU escrevem a variável. Quem pergunta "isto cabe numa
+    /// variável de contexto?" precisa das duas pontas: Set numa tela e leitura
+    /// em outra é justamente o caso em que contexto não serve.
+    /// </summary>
+    public IReadOnlyList<string> ScreensTouching(string name)
+    {
+        var telas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (_readsByScreen.TryGetValue(name, out var lendo))
+            telas.UnionWith(lendo);
+
+        if (_writesByScreen.TryGetValue(name, out var escrevendo))
+            telas.UnionWith(escrevendo);
+
+        return telas.ToList();
+    }
+
+    /// <summary>
     /// Construir o grafo custa o parse de todas as fórmulas do app, e oito regras
     /// pedem o mesmo grafo na mesma execução — sem cache, um app de 2.279 fórmulas
     /// passava de 1,6 s para 9 s. A tabela é por referência de app e não impede
@@ -67,7 +97,14 @@ public sealed class VariableGraph
     {
         var resolver = SymbolResolver.Build(app);
         var definitions = new Dictionary<string, VariableDefinition>(StringComparer.OrdinalIgnoreCase);
+
+        // As definições são chaveadas por tela quando são de contexto, então
+        // perguntas do tipo "este nome existe no app?" precisam deste índice à
+        // parte — sem ele, toda variável de contexto vira "nunca definida".
+        var definedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var readsByScreen = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var writesByScreen = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var writtenAtAppLevel = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var candidateReads = new List<(string Name, SourceLocation Location)>();
         var inferredDataSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -88,7 +125,7 @@ public sealed class VariableGraph
             var defined = new HashSet<TexlNode>();
 
             CollectInferredDataSources(parsed.Root, inferredDataSources);
-            CollectDefinitions(parsed.Root, property, screen, definitions, defined);
+            CollectDefinitions(parsed.Root, property, screen, resolver, definitions, definedNames, defined);
 
             analisadas.Add((property, screen, parsed.Root, defined));
         }
@@ -100,13 +137,30 @@ public sealed class VariableGraph
             foreach (var identifier in AstWalker.Identifiers(root))
             {
                 if (defined.Contains(identifier))
+                {
+                    // Alvo de um Set: registra a tela que escreve, para que
+                    // PF105 saiba que a variável cruza fronteira de tela.
+                    var escrito = identifier.Ident.Name.Value;
+
+                    if (screen is null)
+                    {
+                        writtenAtAppLevel.Add(escrito);
+                    }
+                    else
+                    {
+                        if (!writesByScreen.TryGetValue(escrito, out var telasEscrita))
+                            writesByScreen[escrito] = telasEscrita = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        telasEscrita.Add(screen);
+                    }
+
                     continue;
+                }
 
                 var name = identifier.Ident.Name.Value;
 
                 // Um nome que o app define é variável, mesmo que também apareça
                 // nos metadados como fonte de dados.
-                if (!definitions.ContainsKey(name) && !resolver.IsVariableCandidate(name, rowScopes))
+                if (!definedNames.Contains(name) && !resolver.IsVariableCandidate(name, rowScopes))
                     continue;
 
                 if (!readsByScreen.TryGetValue(name, out var screens))
@@ -125,13 +179,13 @@ public sealed class VariableGraph
         }
 
         var unresolved = candidateReads
-            .Where(r => !definitions.ContainsKey(r.Name))
+            .Where(r => !definedNames.Contains(r.Name))
             .Where(r => !inferredDataSources.Contains(r.Name))
             .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => new VariableReference(g.Key, g.First().Location))
             .ToList();
 
-        return new VariableGraph(definitions, readsByScreen, unresolved);
+        return new VariableGraph(definitions, readsByScreen, writesByScreen, writtenAtAppLevel, unresolved);
     }
 
     /// <summary>
@@ -196,41 +250,66 @@ public sealed class VariableGraph
         TexlNode root,
         PowerFxProperty property,
         string? screen,
+        SymbolResolver resolver,
         Dictionary<string, VariableDefinition> definitions,
+        HashSet<string> definedNames,
         HashSet<TexlNode> defined)
     {
         foreach (var call in AstWalker.Calls(root, "Set"))
-            AddFromFirstArgument(call, VariableKind.Global, screen: null, property, definitions, defined);
+            AddFromFirstArgument(call, VariableKind.Global, screen: null, resolver, property, definitions, definedNames, defined);
 
         foreach (var name in new[] { "Collect", "ClearCollect", "Clear" })
             foreach (var call in AstWalker.Calls(root, name))
-                AddFromFirstArgument(call, VariableKind.Collection, screen: null, property, definitions, defined);
+                AddFromFirstArgument(call, VariableKind.Collection, screen: null, resolver, property, definitions, definedNames, defined);
 
         foreach (var call in AstWalker.Calls(root, "UpdateContext"))
-            AddFromRecordArgument(call, argumentIndex: 0, screen, property, definitions);
+            AddFromRecordArgument(call, argumentIndex: 0, screen, property, definitions, definedNames);
 
-        // Navigate(destino, transição, {contexto}) — a variável nasce no destino.
+        // Navigate(destino, transição, {contexto}) — a variável nasce no destino,
+        // desde que o destino seja mesmo uma tela. Em navegação dinâmica
+        // (Navigate(varProxima, ...)) o nome não é tela nenhuma, e arquivar a
+        // variável ali faria a PF102 nunca encontrar suas leituras.
         foreach (var call in AstWalker.Calls(root, "Navigate"))
         {
             var destino = FirstArgumentName(call);
-            AddFromRecordArgument(call, argumentIndex: 2, destino ?? screen, property, definitions);
+            var telaDestino = destino is not null
+                              && resolver.Resolve(destino, EmptyScopes) == SymbolKind.Screen
+                ? destino
+                : screen;
+
+            AddFromRecordArgument(call, argumentIndex: 2, telaDestino, property, definitions, definedNames);
         }
     }
+
+    private static readonly IReadOnlySet<string> EmptyScopes = new HashSet<string>();
 
     private static void AddFromFirstArgument(
         CallNode call,
         VariableKind kind,
         string? screen,
+        SymbolResolver resolver,
         PowerFxProperty property,
         Dictionary<string, VariableDefinition> definitions,
+        HashSet<string> definedNames,
         HashSet<TexlNode> defined)
     {
         var args = call.Args?.ChildNodes;
         if (args is null || args.Count == 0 || args[0] is not FirstNameNode target)
             return;
 
+        var name = target.Ident.Name.Value;
+
+        // Collect(Ativos, ...) grava numa fonte de dados de verdade; ali não
+        // nasce coleção, e cobrar convenção de nome ou desuso seria falso.
+        if (kind == VariableKind.Collection
+            && resolver.Resolve(name, EmptyScopes) == SymbolKind.DataSource)
+        {
+            defined.Add(target);
+            return;
+        }
+
         defined.Add(target);
-        Add(definitions, target.Ident.Name.Value, kind, screen, property.Location);
+        Add(definitions, definedNames, name, kind, screen, property.Location);
     }
 
     private static void AddFromRecordArgument(
@@ -238,14 +317,15 @@ public sealed class VariableGraph
         int argumentIndex,
         string? screen,
         PowerFxProperty property,
-        Dictionary<string, VariableDefinition> definitions)
+        Dictionary<string, VariableDefinition> definitions,
+        HashSet<string> definedNames)
     {
         var args = call.Args?.ChildNodes;
         if (args is null || args.Count <= argumentIndex || args[argumentIndex] is not RecordNode record)
             return;
 
         foreach (var id in record.Ids)
-            Add(definitions, id.Name.Value, VariableKind.Context, screen, property.Location);
+            Add(definitions, definedNames, id.Name.Value, VariableKind.Context, screen, property.Location);
     }
 
     private static string? FirstArgumentName(CallNode call)
@@ -254,17 +334,30 @@ public sealed class VariableGraph
         return args is { Count: > 0 } && args[0] is FirstNameNode name ? name.Ident.Name.Value : null;
     }
 
+    /// <summary>
+    /// A chave inclui a tela para variáveis de contexto: locX de scrA e locX de
+    /// scrB são variáveis diferentes, e guardar só uma faria a PF102 perder o
+    /// achado da outra. Globais e coleções são do app inteiro, então usam o nome.
+    /// </summary>
     private static void Add(
         Dictionary<string, VariableDefinition> definitions,
+        HashSet<string> definedNames,
         string name,
         VariableKind kind,
         string? screen,
         SourceLocation location)
     {
-        if (string.IsNullOrEmpty(name) || definitions.ContainsKey(name))
+        if (string.IsNullOrEmpty(name))
             return;
 
-        definitions[name] = new VariableDefinition(name, kind, screen, location);
+        var key = kind == VariableKind.Context ? $"{screen} {name}" : name;
+
+        definedNames.Add(name);
+
+        if (definitions.ContainsKey(key))
+            return;
+
+        definitions[key] = new VariableDefinition(name, kind, screen, location);
     }
 
     /// <summary>Cada fórmula do app com a tela a que pertence (null para App.OnStart).</summary>

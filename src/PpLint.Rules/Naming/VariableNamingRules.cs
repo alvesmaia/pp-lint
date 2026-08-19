@@ -28,7 +28,9 @@ public abstract class VariableNamingRuleBase : IRule
 
         try
         {
-            regex = new Regex(pattern, RegexOptions.CultureInvariant);
+            // Timeout evita que um padrão patológico no pp-lint.toml — ^(a+)+$ e
+            // parentes — trave a análise sem saída.
+            regex = new Regex(pattern, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
         }
         catch (ArgumentException ex)
         {
