@@ -16,7 +16,7 @@ Tomadas em conversa com o dono do projeto, após a validação da Fase 1 contra 
 
 1. **Presets nomeados com escolha explícita.** O app real validado usa `ButtonCreateGame` — consistente, porém diferente do preset embutido, o que gerou 129 avisos. Em vez de impor uma régua, o pp-lint passa a oferecer presets (`camel-prefix`, `pascal-type`) e o time escolhe. Sem escolha, avisa uma vez qual está usando e como trocar.
 2. **Supressão inline mais ignores por glob**, sem baseline. Baseline continua na fase de release.
-3. **Tomlyn** para ler TOML, usando `Toml.ToModel` e leitura manual da tabela — sem mapeamento por reflexão, que quebraria se o trimming voltar.
+3. **Tomlyn** para ler TOML, usando `TomlSerializer.Deserialize<TomlTable>` e leitura manual da tabela — sem mapeamento por reflexão, que quebraria se o trimming voltar.
 4. **Precedência** defaults → preset → arquivo → flags de CLI, como ruff e ESLint.
 
 ## Global Constraints
@@ -1027,7 +1027,7 @@ public class TomlSpike(ITestOutputHelper output)
             button = "btn"
             """;
 
-        var model = Toml.ToModel(toml);
+        var model = TomlSerializer.Deserialize<TomlTable>(toml)!;
         output.WriteLine($"raiz: {model.GetType().FullName}");
 
         var section = (TomlTable)model["pp-lint"]!;
@@ -1044,7 +1044,7 @@ public class TomlSpike(ITestOutputHelper output)
 
 Run: `dotnet test tests/PpLint.Core.Tests --filter PrintModelShape --logger "console;verbosity=detailed"`
 
-Confirme antes de seguir: `Toml.ToModel` devolve um `TomlTable` indexável por string; seções aninhadas são `TomlTable`; arrays são `TomlArray`. Se algum nome divergir, ajuste o leitor mantendo a assinatura de `TomlConfigReader.Read` intacta.
+Confirme antes de seguir: `TomlSerializer.Deserialize<TomlTable>` devolve um `TomlTable` indexável por string; seções aninhadas são `TomlTable`; arrays são `TomlArray`. Se algum nome divergir, ajuste o leitor mantendo a assinatura de `TomlConfigReader.Read` intacta.
 
 - [ ] **Step 2: Escrever o teste que falha**
 
@@ -1259,9 +1259,9 @@ public static class TomlConfigReader
         TomlTable root;
         try
         {
-            root = Toml.ToModel(toml);
+            root = TomlSerializer.Deserialize<TomlTable>(toml) ?? throw new ConfigException("TOML vazio ou não reconhecido.");
         }
-        catch (Exception ex)
+        catch (TomlException ex)
         {
             throw new ConfigException($"TOML inválido: {ex.Message}", ex);
         }
