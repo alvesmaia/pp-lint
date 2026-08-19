@@ -235,4 +235,19 @@ public class RealArtifactTests
         Assert.DoesNotContain("FL203", ids);
         Assert.DoesNotContain("FL202", ids);
     }
+    [Fact]
+    public void RealMsapp_FlagsScreensWhoseNameForcesQuotedReferences()
+    {
+        // Onze telas do app real têm espaço no nome, e por causa disso toda
+        // navegação escreve Navigate('Game Screen', …) — conferido no arquivo.
+        // É o problema que a NM040 existe para pegar.
+        var project = ProjectLoader.Load(RealMsapp);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        var achados = result.Diagnostics.Where(d => d.RuleId == "NM040").ToList();
+
+        Assert.True(achados.Count >= 10, $"esperava as telas com espaço, veio {achados.Count}");
+        Assert.All(achados, d => Assert.Contains("espaço", d.Message));
+    }
 }

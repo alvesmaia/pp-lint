@@ -168,7 +168,7 @@ morto, `PERF` performance e delegação, `SEC` segurança, `SOL` solução/ALM.
 | NM023 | Display name divergente do schema name além do aceitável | Info |
 | NM030 | Fluxo com nome default ou fora do padrão verbo-substantivo | Warn |
 | NM031 | Ação de fluxo com nome default (`Compose 2`, `Apply_to_each_3`) | Error |
-| NM040 | Identificador com acento, espaço ou caractere especial | Warn |
+| NM040 | Identificador com acento, espaço ou caractere especial | Error |
 | NM041 | Nome abaixo do comprimento mínimo | Info |
 
 Todas as regras `NM` leem regex e tabela de prefixos da configuração; nenhuma

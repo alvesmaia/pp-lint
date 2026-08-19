@@ -146,3 +146,21 @@ sinais de menor como sequências unicode — e as mensagens citam nomes entre ap
 tempo todo, o que tornaria o arquivo ilegível para quem o abre.
 
 Plano: `docs/superpowers/plans/2026-08-19-pp-lint-fase-2c.md`.
+
+## NM040 — caracteres especiais em nomes
+
+Nome de variável, coleção, controle, tela, fluxo, ação ou variável de fluxo que use algo
+fora de letra ASCII, dígito e underscore passa a ser **Erro**. O spec previa Aviso; a
+severidade foi elevada a pedido do usuário, e a elevação se justifica: não é estilo.
+
+Em Power Fx o identificador passa a exigir aspas simples em toda referência, e um apóstrofo
+mal fechado numa fórmula distante quebra outra coisa. Em coluna de SharePoint o nome
+interno vira `Descri_x00e7__x00e3_o`, e é esse o nome que fórmulas e fluxos precisam usar.
+
+Os dois artefatos reais confirmam o problema: o app de xadrez tem onze telas com espaço no
+nome e **toda** navegação escreve `Navigate('Game Screen', …)`; o fluxo da PnP tem uma ação
+chamada `List_to-do's_by_folder_(V2)`, e a expressão que a consome precisa duplicar o
+apóstrofo — `body('List_to-do''s_by_folder_(V2)')`.
+
+Nome de exibição não é cobrado: o texto que o usuário lê continua acentuado. O que a regra
+governa é o identificador.
