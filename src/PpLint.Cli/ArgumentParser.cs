@@ -25,7 +25,7 @@ public sealed record ParseResult<T>(bool IsSuccess, T? Value, string? Error)
 
 public static class ArgumentParser
 {
-    private static readonly string[] ValidFormats = ["text", "json", "sarif", "html", "md"];
+    private static readonly string[] ValidFormats = ["text", "json", "sarif"];
 
     public static ParseResult<CliOptions> Parse(string[] args)
     {

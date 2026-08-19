@@ -127,3 +127,22 @@ Primeira fase desenhada contra um artefato real desde o início, e a primeira em
 artefato real não encontrou defeito nenhum nas regras: os dois achados no fluxo do
 fixture (sem tratamento de falha, sem descrição) e os cinco silêncios foram conferidos
 linha a linha no JSON.
+
+## Fase 2c — concluída
+
+Formatos `json` e `sarif`, comando `explain` com a documentação das 28 regras embarcada no
+binário, e índice de conformidade por artefato. `html` e `md` saíram do `--help`: voltam na
+Fase 5, junto com o relatório HTML que o spec prevê. O CLI passou a prometer apenas o que
+cumpre — antes anunciava cinco formatos e não entregava nenhum.
+
+Duas decisões que o formato impôs:
+
+O SARIF omite `region` quando não há número de linha, em vez de apontar para a linha 1. O
+`.msapp` guarda as fórmulas dentro de JSON gerado pelo Studio e o extractor não registra
+offset; a anotação aponta para o arquivo, com entrada e símbolo em `logicalLocations`.
+
+Os dois relatórios usam `UnsafeRelaxedJsonEscaping`. O encoder padrão escapa apóstrofo e
+sinais de menor como sequências unicode — e as mensagens citam nomes entre apóstrofos o
+tempo todo, o que tornaria o arquivo ilegível para quem o abre.
+
+Plano: `docs/superpowers/plans/2026-08-19-pp-lint-fase-2c.md`.

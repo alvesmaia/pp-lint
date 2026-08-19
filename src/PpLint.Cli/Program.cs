@@ -2,6 +2,8 @@ using System.Diagnostics;
 using PpLint.Core;
 using PpLint.Core.Configuration;
 using PpLint.Core.Model;
+using PpLint.Core.Reporting;
+using PpLint.Rules;
 using PpLint.Core.Rules;
 using PpLint.Core.Scoring;
 using PpLint.Core.Suppression;
@@ -64,8 +66,19 @@ public static class Program
                 return 0;
 
             case CliCommand.Explain:
-                stdout.WriteLine($"Documentação da regra {options.ExplainRuleId} disponível a partir da Fase 2.");
+            {
+                var doc = RuleDocs.Find(options.ExplainRuleId!);
+                if (doc is null)
+                {
+                    stderr.WriteLine(
+                        $"Regra desconhecida: '{options.ExplainRuleId}'. "
+                        + "Use 'pp-lint rules' para ver o catálogo.");
+                    return 2;
+                }
+
+                stdout.WriteLine(doc.Markdown);
                 return 0;
+            }
 
             case CliCommand.Check:
                 return RunCheck(options, stdout, stderr, workingDirectory ?? Directory.GetCurrentDirectory());
@@ -79,12 +92,6 @@ public static class Program
     private static int RunCheck(
         CliOptions options, TextWriter stdout, TextWriter stderr, string workingDirectory)
     {
-        if (options.Format != "text")
-        {
-            stderr.WriteLine($"O formato '{options.Format}' será entregue na Fase 2c. Use 'text'.");
-            return 2;
-        }
-
         PpLintConfig config;
         bool usedConfigFile;
         try
@@ -98,8 +105,7 @@ public static class Program
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var diagnostics = new List<Diagnostic>();
-        var tallies = new List<RuleTally>();
+        var resultados = new List<(string Path, LintResult Result)>();
         var engine = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly);
 
         foreach (var path in options.Paths)
@@ -129,18 +135,27 @@ public static class Program
                 return 2;
             }
 
-            diagnostics.AddRange(result.Diagnostics);
-            tallies.AddRange(result.Tallies);
+            resultados.Add((path, result));
         }
 
         stopwatch.Stop();
 
-        var compliance = ComplianceScorer.Compute(tallies);
+        var run = AnalysisRun.From(resultados, stopwatch.Elapsed);
         var useColor = !options.NoColor && !Console.IsOutputRedirected;
 
-        stdout.Write(TextReporter.Render(diagnostics, compliance, stopwatch.Elapsed, useColor, options.Quiet));
+        var saida = options.Format switch
+        {
+            "json" => JsonReporter.Render(run),
+            "sarif" => SarifReporter.Render(run),
+            _ => TextReporter.Render(run, useColor, options.Quiet),
+        };
 
-        if (!usedConfigFile && diagnostics.Any(d => d.Category == RuleCategory.Naming))
+        if (options.Output is not null)
+            File.WriteAllText(options.Output, saida);
+        else
+            stdout.Write(saida);
+
+        if (!usedConfigFile && run.AllDiagnostics.Any(d => d.Category == RuleCategory.Naming))
         {
             stderr.WriteLine(
                 $"Nota: usando o preset de nomenclatura '{config.PresetName}' porque não há {ConfigLocator.FileName}. "
@@ -148,7 +163,7 @@ public static class Program
                 + $"Crie um {ConfigLocator.FileName} com [pp-lint] preset = \"...\" para escolher outro.");
         }
 
-        return diagnostics.Any(d => d.Severity >= config.FailOn) ? 1 : 0;
+        return run.AllDiagnostics.Any(d => d.Severity >= config.FailOn) ? 1 : 0;
     }
 
     /// <summary>
@@ -235,7 +250,7 @@ public static class Program
           --config <arquivo>                    usa este pp-lint.toml em vez de procurar
           --select <IDs>                        só estas regras (ID ou categoria, separados por vírgula)
           --ignore <IDs>                        nunca estas regras; vence o --select
-          --format <text|json|sarif|html|md>    formato de saída (padrão: text)
+          --format <text|json|sarif>            formato de saída (padrão: text)
           --output <arquivo>                    grava a saída em arquivo
           --fail-on <error|warning|info>        severidade que retorna código 1 (padrão: error)
           --no-color                            desativa cores

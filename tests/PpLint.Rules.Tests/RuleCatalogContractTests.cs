@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 using PpLint.Core;
+using PpLint.Rules;
 using PpLint.Core.Model;
 using PpLint.Core.Rules;
 using PpLint.Rules.Naming;
@@ -194,5 +195,36 @@ public class RuleCatalogContractTests
         Assert.Contains("PF101", ids);
         Assert.Contains("PF110", ids);
         Assert.Contains("FL201", ids);
+    }
+    [Fact]
+    public void EveryRuleInTheCatalogHasDocumentation()
+    {
+        // Regra sem documento faz 'pp-lint explain' e o SARIF saírem mancos
+        // justamente para a regra nova, que é a que ninguém conhece.
+        var semDoc = RulesAssembly.GetTypes()
+            .Select(t => t.GetCustomAttributes(typeof(RuleAttribute), false).FirstOrDefault())
+            .OfType<RuleAttribute>()
+            .Select(a => a.Id)
+            .Where(id => RuleDocs.Find(id) is null)
+            .Order()
+            .ToList();
+
+        Assert.Empty(semDoc);
+    }
+
+    [Fact]
+    public void EveryDocumentCorrespondsToARuleInTheCatalog()
+    {
+        // O contrário também: documento órfão significa regra removida ou ID
+        // digitado errado no nome do arquivo.
+        var ids = RulesAssembly.GetTypes()
+            .Select(t => t.GetCustomAttributes(typeof(RuleAttribute), false).FirstOrDefault())
+            .OfType<RuleAttribute>()
+            .Select(a => a.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var orfaos = RuleDocs.AvailableIds().Where(id => !ids.Contains(id)).ToList();
+
+        Assert.Empty(orfaos);
     }
 }

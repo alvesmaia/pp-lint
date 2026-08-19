@@ -5,6 +5,12 @@
     <ProjectReference Include="..\PpLint.PowerFx\PpLint.PowerFx.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- A documentação de cada regra viaja dentro do binário: quem baixa o
+         executável não baixa uma pasta de markdown junto. -->
+    <EmbeddedResource Include="Docs/*.md" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
