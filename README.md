@@ -78,6 +78,14 @@ apps de tamanhos diferentes.
 | PF105 | Variável global lida em uma única tela; caberia contexto | Informação |
 | PF106 | Mesmo `Set` com o mesmo valor duas vezes na mesma fórmula | Aviso |
 | PF110 | Condição constante (`If(2 > 1, …)`, `If(true, …)`) | Erro |
+| PF111 | `If(cond, true, false)` — o If não acrescenta nada | Aviso |
+| PF112 | Comparação com booleano (`x = true`) | Aviso |
+| PF113 | Os dois ramos do `If` são idênticos | Erro |
+| PF114 | Condição repetida no ramo `senão` — ramo inalcançável | Erro |
+| PF115 | Dupla negação (`Not(Not(x))`, `!!x`) | Aviso |
+| PF116 | `Filter(fonte, true)` — filtro sem efeito | Aviso |
+| PF117 | `CountRows(x) > 0` em vez de `!IsEmpty(x)` | Aviso |
+| PF118 | Concatenação com texto vazio | Informação |
 | FL201 | Variável de fluxo inicializada e nunca lida | Aviso |
 
 `pp-lint rules` lista o catálogo instalado.
