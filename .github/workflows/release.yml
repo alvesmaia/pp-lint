@@ -1,0 +1,86 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            asset: pp-lint-win-x64.exe
+            binary: pp-lint.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            asset: pp-lint-linux-x64
+            binary: pp-lint
+          - os: macos-latest
+            rid: osx-arm64
+            asset: pp-lint-osx-arm64
+            binary: pp-lint
+          - os: macos-13
+            rid: osx-x64
+            asset: pp-lint-osx-x64
+            binary: pp-lint
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Testes
+        run: dotnet test --configuration Release
+
+      - name: Publicar binário
+        run: >
+          dotnet publish src/PpLint.Cli
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          --output publish
+
+      - name: Renomear e gerar checksum
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          cp "publish/${{ matrix.binary }}" "artifacts/${{ matrix.asset }}"
+          cd artifacts
+          shasum -a 256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+
+      - name: Verificar que o catálogo sobreviveu à publicação
+        shell: bash
+        run: |
+          # As regras são descobertas por reflexão; se o publish removesse os
+          # tipos, 'rules' viria vazio e o binário seria inútil na prática.
+          count=$(./publish/${{ matrix.binary }} rules | wc -l)
+          echo "regras no binário publicado: $count"
+          test "$count" -ge 5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.rid }}
+          path: artifacts/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

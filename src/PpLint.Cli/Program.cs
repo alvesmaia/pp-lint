@@ -10,7 +10,21 @@ namespace PpLint.Cli;
 
 public static class Program
 {
-    public static int Main(string[] args) => Run(args, Console.Out, Console.Error);
+    public static int Main(string[] args)
+    {
+        // As mensagens são em português; sem UTF-8 explícito o console do
+        // Windows usa a code page do sistema e corrompe a acentuação.
+        try
+        {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+        }
+        catch (IOException)
+        {
+            // Saída redirecionada para um handle que não aceita troca de encoding.
+        }
+
+        return Run(args, Console.Out, Console.Error);
+    }
 
     public static int Run(string[] args, TextWriter stdout, TextWriter stderr)
     {

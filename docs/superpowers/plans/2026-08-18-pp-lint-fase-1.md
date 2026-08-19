@@ -5371,8 +5371,11 @@ public class EndToEndTests
     {
         var (_, output, _) = Invoke("check", CreateMsapp(), "--quiet", "--no-color");
 
-        Assert.DoesNotContain("NM010", output);
+        // O achado detalhado some; o resumo com as ocorrências por regra permanece.
+        Assert.DoesNotContain("mantém o nome padrão", output);
+        Assert.DoesNotContain("Controls/1.json", output);
         Assert.Contains("Conformidade geral", output);
+        Assert.Contains("Principais ocorrências", output);
     }
 
     [Fact]
