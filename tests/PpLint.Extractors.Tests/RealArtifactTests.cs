@@ -83,7 +83,15 @@ public class RealArtifactTests
         var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
             .Run(project, PpLint.Core.PpLintConfig.Default);
 
-        Assert.Equal(5, result.Tallies.Count);
+        // Toda regra do catálogo produz uma contagem — o número cresce a cada
+        // fase, então a asserção compara com o catálogo e não com um literal.
+        var idsDoCatalogo = typeof(DefaultControlNameRule).Assembly.GetTypes()
+            .Select(t => t.GetCustomAttributes(typeof(RuleAttribute), false).FirstOrDefault())
+            .OfType<RuleAttribute>()
+            .Select(a => a.Id)
+            .Order();
+
+        Assert.Equal(idsDoCatalogo, result.Tallies.Select(t => t.RuleId).Order());
         Assert.All(result.Tallies, t => Assert.True(t.Violations <= t.Evaluated));
 
         // Este app tem controles com nome padrão (Image1, Slider1, Rectangle11)
@@ -126,6 +134,26 @@ public class RealArtifactTests
         Assert.True(
             comPascal < comCamel / 2,
             $"pascal-type devia reduzir bastante: camel={comCamel}, pascal={comPascal}");
+    }
+
+    [Fact]
+    public void RealMsapp_UndefinedVariableRuleDoesNotFloodWithFalsePositives()
+    {
+        // PF104 tem severidade Error: um falso positivo quebra o build de quem
+        // confiou na ferramenta. Este app tem 827 fórmulas reais e funciona —
+        // um punhado de achados é plausível, dezenas significam buraco no
+        // resolvedor de símbolos, não app ruim.
+        var project = ProjectLoader.Load(RealMsapp);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        var achados = result.Diagnostics.Where(d => d.RuleId == "PF104").ToList();
+
+        Assert.True(
+            achados.Count <= 5,
+            "PF104 achou nomes demais num app real que funciona; o resolvedor está deixando "
+            + "passar alguma categoria de símbolo: "
+            + string.Join(", ", achados.Take(15).Select(d => d.Message)));
     }
 
     // ---- solução exportada (aguardando fixture) ----

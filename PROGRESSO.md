@@ -51,9 +51,32 @@ O plano supunha `Toml.ToModel`; o Tomlyn 2.10.1 usa
 `TomlSerializer.Deserialize<TomlTable>` e lança `TomlException`. O plano foi
 corrigido para refletir a API real.
 
+## Fase 2b-1 — concluída
+
+Variáveis: resolvedor de símbolos, grafo com tipo e escopo, 8 regras novas
+(NM001–NM003, PF102–PF106). O catálogo passou de 5 para 13 regras. Plano:
+`docs/superpowers/plans/2026-08-19-pp-lint-fase-2b1.md`.
+
+A PF104 foi calibrada contra o `chess-real.msapp` — 827 fórmulas reais — porque
+tem severidade Error e um falso positivo quebraria o build de quem confia na
+ferramenta. A calibragem reprovou três vezes antes de passar, e cada reprovação
+apontou um buraco real no resolvedor:
+
+1. Nomes de coluna dentro de funções de tabela (`Filter(Pedidos, Title = "x")`).
+2. Enums e objetos de host à esquerda de um ponto (`TraceSeverity.Warning`).
+3. Fontes de dados que o app usa mas não declara nos metadados — `Refresh(GameServer)`
+   prova o que `GameServer` é.
+
+Resultado final: zero falsos positivos no app real.
+
+Descoberta da execução: `Engine.GetAllFunctionNames()` não devolve as funções de
+comportamento do Power Apps (`Set`, `Notify`, `Navigate`, `Collect`) — quem as
+registra é o host, não o engine core. Entram por lista complementar.
+
 ## Próximas fases
 
-- **2b** — catálogo NM e PF completo, grafo de variáveis de contexto e coleções.
+- **2b-2** — lógica redundante em expressões (PF111–PF118).
+- **2b-3** — telas, componentes, fluxos, colunas (NM012–NM041, PF120–PF130).
 - **2c** — formatos JSON e SARIF, `explain` com documentação, `inspect`, índice
   por artefato.
 - **Release** — baseline, benchmark, binários públicos.

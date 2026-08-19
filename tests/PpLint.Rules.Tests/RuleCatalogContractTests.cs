@@ -92,7 +92,10 @@ public class RuleCatalogContractTests
         // Projeto com um app e um fluxo, ambos com conteúdo: nenhuma regra
         // desta fase pode terminar sem ter examinado alvo algum.
         var app = App("A", Screen("scrHome",
-            Ctl("btnSalvar", "button", ("OnSelect", "Set(varTotal, 1); If(varTotal > 0, Notify(\"ok\"))"))));
+            Ctl("btnSalvar", "button",
+                ("OnSelect",
+                 "Set(varTotal, 1); UpdateContext({locAberto: true}); ClearCollect(colItens, [1]); "
+                 + "If(varTotal > 0, Notify(\"ok\"))"))));
 
         var flow = new CloudFlow
         {

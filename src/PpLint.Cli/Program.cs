@@ -115,7 +115,20 @@ public static class Program
                 return 2;
             }
 
-            var result = engine.Run(project, config, SuppressionIndex.Build(project));
+            LintResult result;
+            try
+            {
+                result = engine.Run(project, config, SuppressionIndex.Build(project));
+            }
+            catch (ConfigException ex)
+            {
+                // Uma regra pode rejeitar a configuração ao rodar — regex inválido
+                // em pp-lint.toml, por exemplo. Sem isto o processo morria com
+                // stack trace em vez de sair com código 2 e uma mensagem útil.
+                stderr.WriteLine(ex.Message);
+                return 2;
+            }
+
             diagnostics.AddRange(result.Diagnostics);
             tallies.AddRange(result.Tallies);
         }

@@ -62,6 +62,13 @@ public sealed class RuleEngine
             {
                 rule.Check(ctx);
             }
+            catch (Configuration.ConfigException)
+            {
+                // Configuração inválida é problema do usuário, não defeito da
+                // regra: precisa chegar como erro de execução em vez de sumir
+                // junto com a regra que deixou de rodar.
+                throw;
+            }
             catch (Exception)
             {
                 // Uma regra com defeito não pode invalidar a execução inteira:
