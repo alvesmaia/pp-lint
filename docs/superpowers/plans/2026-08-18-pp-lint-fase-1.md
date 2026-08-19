@@ -2617,6 +2617,7 @@ Expected: FALHA de compilação — `PowerFxParser` e `AstWalker` não existem.
 `src/PpLint.PowerFx/PowerFxParser.cs`:
 
 ```csharp
+using System.Globalization;
 using Microsoft.PowerFx;
 using Microsoft.PowerFx.Syntax;
 
@@ -2633,6 +2634,17 @@ public static class PowerFxParser
 {
     private static readonly Engine SharedEngine = new(new PowerFxConfig());
 
+    /// <summary>
+    /// Cultura invariante porque o .msapp guarda InvariantScript — vírgula separa
+    /// argumentos, independentemente da cultura da máquina. AllowsSideEffects habilita
+    /// o operador de encadeamento ';', usado em toda propriedade de comportamento.
+    /// </summary>
+    private static readonly ParserOptions Options = new()
+    {
+        Culture = CultureInfo.InvariantCulture,
+        AllowsSideEffects = true,
+    };
+
     public static FxParseResult Parse(string script)
     {
         if (string.IsNullOrWhiteSpace(script))
@@ -2640,7 +2652,7 @@ public static class PowerFxParser
 
         try
         {
-            var result = SharedEngine.Parse(script);
+            var result = SharedEngine.Parse(script, Options);
             var errors = result.Errors?.Select(e => e.ToString() ?? string.Empty).ToList() ?? [];
 
             return result.IsSuccess
