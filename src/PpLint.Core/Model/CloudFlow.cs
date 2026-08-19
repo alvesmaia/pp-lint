@@ -30,6 +30,12 @@ public sealed class FlowAction
 
     public List<string> RunAfter { get; } = [];
 
+    /// <summary>
+    /// Estados exigidos dos predecessores — "Succeeded", "Failed", "Skipped",
+    /// "TimedOut". Qualquer coisa diferente de Succeeded é tratamento de erro.
+    /// </summary>
+    public List<string> RunAfterStates { get; } = [];
+
     /// <summary>Todas as strings encontradas nos inputs da ação, onde vivem as expressões @{...}.</summary>
     public List<string> Expressions { get; } = [];
 

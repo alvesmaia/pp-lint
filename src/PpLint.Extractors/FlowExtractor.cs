@@ -104,7 +104,22 @@ public static class FlowExtractor
                 && runAfter.ValueKind == JsonValueKind.Object)
             {
                 foreach (var predecessor in runAfter.EnumerateObject())
+                {
                     action.RunAfter.Add(predecessor.Name);
+
+                    // O valor é a lista de estados aceitos do predecessor. É aí que
+                    // aparece o tratamento de erro: qualquer estado diferente de
+                    // Succeeded significa "faça isto se aquilo não deu certo".
+                    if (predecessor.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var estado in predecessor.Value.EnumerateArray())
+                        {
+                            var texto = estado.GetString();
+                            if (!string.IsNullOrEmpty(texto))
+                                action.RunAfterStates.Add(texto);
+                        }
+                    }
+                }
             }
 
             foreach (var name in new[] { "inputs", "foreach", "expression", "condition" })
