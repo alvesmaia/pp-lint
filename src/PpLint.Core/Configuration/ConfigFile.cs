@@ -8,6 +8,10 @@ namespace PpLint.Core.Configuration;
 public sealed record ConfigFile
 {
     public string? Preset { get; init; }
+
+    /// <summary>Limiar de [pp-lint.thresholds]; null significa "usar o padrão".</summary>
+    public int? MinRecurrenceMinutes { get; init; }
+
     public IReadOnlyList<string>? Select { get; init; }
     public IReadOnlyList<string>? Ignore { get; init; }
     public Severity? FailOn { get; init; }

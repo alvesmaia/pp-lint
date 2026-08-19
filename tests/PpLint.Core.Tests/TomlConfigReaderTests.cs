@@ -195,3 +195,43 @@ public class TomlUnknownKeyTests
         Assert.Contains("naming-rules", ex.Message);
     }
 }
+
+public class ThresholdConfigTests
+{
+    [Fact]
+    public void ReadsRecurrenceThreshold()
+    {
+        var file = TomlConfigReader.Read("""
+            [pp-lint.thresholds]
+            min-recurrence-minutes = 5
+            """);
+
+        Assert.Equal(5, file.MinRecurrenceMinutes);
+    }
+
+    [Fact]
+    public void ThresholdAbsentMeansDefault()
+    {
+        Assert.Null(TomlConfigReader.Read("[pp-lint]\npreset = \"camel-prefix\"").MinRecurrenceMinutes);
+        Assert.Equal(15, ConfigResolver.Resolve(new ConfigFile(), CliOverrides.None).Thresholds.MinRecurrenceMinutes);
+    }
+
+    [Fact]
+    public void ThresholdReachesTheResolvedConfig()
+    {
+        var file = TomlConfigReader.Read("[pp-lint.thresholds]\nmin-recurrence-minutes = 60");
+
+        Assert.Equal(60, ConfigResolver.Resolve(file, CliOverrides.None).Thresholds.MinRecurrenceMinutes);
+    }
+
+    [Fact]
+    public void NonNumericThresholdIsRejected()
+    {
+        // Um limiar escrito como texto viraria o default em silêncio, e o usuário
+        // acharia que configurou algo.
+        var erro = Assert.Throws<ConfigException>(() =>
+            TomlConfigReader.Read("[pp-lint.thresholds]\nmin-recurrence-minutes = \"cinco\""));
+
+        Assert.Contains("min-recurrence-minutes", erro.Message);
+    }
+}

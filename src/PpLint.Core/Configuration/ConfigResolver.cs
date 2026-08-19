@@ -22,6 +22,10 @@ public static class ConfigResolver
         return new PpLintConfig
         {
             PresetName = presetName,
+            Thresholds = new ThresholdConfig
+            {
+                MinRecurrenceMinutes = file.MinRecurrenceMinutes ?? 15,
+            },
             Naming = naming,
             Select = ToSet(cli.Select ?? file.Select),
             Ignore = ToSet(cli.Ignore ?? file.Ignore),
