@@ -74,3 +74,77 @@ public class UnusedGlobalVariableRuleTests
         Assert.Equal(2, Assert.Single(result.Tallies).Evaluated);
     }
 }
+
+public class ConstantConditionRuleTests
+{
+    private static PpLint.Core.Rules.LintResult Check(string script) =>
+        Run(new ConstantConditionRule(),
+            ProjectWith(App("A", Screen("scrHome", Ctl("btnOk", "button", ("OnSelect", script))))));
+
+    [Fact]
+    public void Reports_ComparisonBetweenNumericLiterals()
+    {
+        var d = Assert.Single(Check("If(2 > 1, Notify(\"sempre\"))").Diagnostics);
+        Assert.Equal("PF110", d.RuleId);
+        Assert.Equal(Severity.Error, d.Severity);
+    }
+
+    [Fact]
+    public void Reports_EqualityBetweenNumericLiterals()
+    {
+        Assert.Single(Check("If(1 = 1, Notify(\"sempre\"))").Diagnostics);
+    }
+
+    [Fact]
+    public void Reports_BooleanLiteralAsIfCondition()
+    {
+        Assert.Single(Check("If(true, Notify(\"sempre\"))").Diagnostics);
+    }
+
+    [Fact]
+    public void DoesNotReport_ConditionUsingAVariable()
+    {
+        Assert.Empty(Check("If(varTotal > 1, Notify(\"talvez\"))").Diagnostics);
+    }
+
+    [Fact]
+    public void DoesNotReport_ConditionUsingAFunctionCall()
+    {
+        Assert.Empty(Check("If(IsBlank(txtNome.Text), Notify(\"vazio\"))").Diagnostics);
+    }
+
+    [Fact]
+    public void DoesNotReport_ArithmeticBetweenLiterals()
+    {
+        // 1 + 2 é cálculo, não condição; só comparações constantes interessam.
+        Assert.Empty(Check("Set(varTotal, 1 + 2)").Diagnostics);
+    }
+
+    [Fact]
+    public void DoesNotReport_BooleanLiteralOutsideACondition()
+    {
+        Assert.Empty(Check("Set(varAtivo, true)").Diagnostics);
+    }
+
+    [Fact]
+    public void Evaluates_EachConditionSeparately()
+    {
+        var result = Check("If(varA, 1, If(2 > 1, 2, 3))");
+        var tally = Assert.Single(result.Tallies);
+
+        Assert.Equal(2, tally.Evaluated);
+        Assert.Equal(1, tally.Violations);
+    }
+
+    [Fact]
+    public void Evaluates_ZeroWhenThereAreNoConditions()
+    {
+        Assert.Equal(0, Assert.Single(Check("Notify(\"oi\")").Tallies).Evaluated);
+    }
+
+    [Fact]
+    public void UnparseableExpressionIsIgnored()
+    {
+        Assert.Empty(Check("If(2 > 1,").Diagnostics);
+    }
+}
