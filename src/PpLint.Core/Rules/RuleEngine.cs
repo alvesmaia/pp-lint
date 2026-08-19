@@ -45,7 +45,10 @@ public sealed class RuleEngine
 
         foreach (var (rule, meta) in _rules)
         {
-            if (config.Ignore.Contains(meta.Id))
+            if (!RuleFilter.ShouldRun(meta.Id, config))
+                continue;
+
+            if (RuleFilter.IsIgnoredForArtifact(meta.Id, project.SourcePath, config))
                 continue;
 
             var severity = config.SeverityOverrides.TryGetValue(meta.Id, out var overridden)
