@@ -3,6 +3,7 @@ using PpLint.Core;
 using PpLint.Core.Configuration;
 using PpLint.Core.Model;
 using PpLint.Core.Reporting;
+using PpLint.Rules;
 using PpLint.Core.Rules;
 using PpLint.Core.Scoring;
 using PpLint.Core.Suppression;
@@ -65,8 +66,19 @@ public static class Program
                 return 0;
 
             case CliCommand.Explain:
-                stdout.WriteLine($"Documentação da regra {options.ExplainRuleId} disponível a partir da Fase 2.");
+            {
+                var doc = RuleDocs.Find(options.ExplainRuleId!);
+                if (doc is null)
+                {
+                    stderr.WriteLine(
+                        $"Regra desconhecida: '{options.ExplainRuleId}'. "
+                        + "Use 'pp-lint rules' para ver o catálogo.");
+                    return 2;
+                }
+
+                stdout.WriteLine(doc.Markdown);
                 return 0;
+            }
 
             case CliCommand.Check:
                 return RunCheck(options, stdout, stderr, workingDirectory ?? Directory.GetCurrentDirectory());
