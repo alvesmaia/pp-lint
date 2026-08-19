@@ -83,7 +83,15 @@ public class RealArtifactTests
         var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
             .Run(project, PpLint.Core.PpLintConfig.Default);
 
-        Assert.Equal(5, result.Tallies.Count);
+        // Toda regra do catálogo produz uma contagem — o número cresce a cada
+        // fase, então a asserção compara com o catálogo e não com um literal.
+        var idsDoCatalogo = typeof(DefaultControlNameRule).Assembly.GetTypes()
+            .Select(t => t.GetCustomAttributes(typeof(RuleAttribute), false).FirstOrDefault())
+            .OfType<RuleAttribute>()
+            .Select(a => a.Id)
+            .Order();
+
+        Assert.Equal(idsDoCatalogo, result.Tallies.Select(t => t.RuleId).Order());
         Assert.All(result.Tallies, t => Assert.True(t.Violations <= t.Evaluated));
 
         // Este app tem controles com nome padrão (Image1, Slider1, Rectangle11)
