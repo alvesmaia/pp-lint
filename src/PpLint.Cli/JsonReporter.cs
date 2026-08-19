@@ -1,6 +1,5 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Unicode;
 using PpLint.Core;
 using PpLint.Core.Reporting;
 using PpLint.Core.Rules;
@@ -28,7 +27,10 @@ public static class JsonReporter
         Indented = true,
         // O escape padrão transformaria "padrão" em "padrão". Em português
         // isso atinge quase toda mensagem e torna o arquivo ilegível.
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+        // Relaxed porque a saída é um arquivo de relatório, não HTML embutido: o
+        // encoder padrão escaparia apóstrofo e sinais de menor como 0027 e
+        // 003C, e as mensagens citam nomes entre apóstrofos o tempo todo.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     public static string Render(AnalysisRun run)

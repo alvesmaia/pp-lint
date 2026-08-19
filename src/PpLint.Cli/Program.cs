@@ -146,6 +146,7 @@ public static class Program
         var saida = options.Format switch
         {
             "json" => JsonReporter.Render(run),
+            "sarif" => SarifReporter.Render(run),
             _ => TextReporter.Render(run, useColor, options.Quiet),
         };
 

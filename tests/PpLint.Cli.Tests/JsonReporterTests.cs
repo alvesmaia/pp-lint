@@ -98,3 +98,64 @@ public class JsonReporterTests
         Assert.Equal(100.0, root.GetProperty("compliance").GetProperty("percent").GetDouble(), 1);
     }
 }
+
+public class JsonEscapingTests
+{
+    private static SourceLocation Loc() => new("a.msapp", "e.json", "S", 0, 0);
+
+    private static string Render(string mensagem) =>
+        JsonReporter.Render(AnalysisRun.From(
+            [("a.msapp", new LintResult(
+                [new Diagnostic("NM010", RuleCategory.Naming, Severity.Warning, mensagem, Loc())],
+                [new RuleTally("NM010", RuleCategory.Naming, Severity.Warning, 1, 1)]))],
+            TimeSpan.Zero));
+
+    /// <summary>
+    /// O início de uma sequência de escape unicode, montado assim para o próprio
+    /// fonte deste teste não conter a sequência que ele procura.
+    /// </summary>
+    private static readonly string EscapeUnicode = "\\" + "u";
+
+    [Fact]
+    public void ApostrophesStayReadable()
+    {
+        // As mensagens citam nomes entre apóstrofos o tempo todo. O encoder
+        // padrão os escapa por segurança em HTML, o que aqui só deixaria o
+        // relatório ilegível para quem o abre.
+        var json = Render("O fluxo 'MeuFluxo' não trata falha.");
+
+        Assert.Contains("'MeuFluxo'", json);
+        Assert.DoesNotContain(EscapeUnicode, json);
+    }
+
+    [Fact]
+    public void AngleBracketsStayReadable()
+    {
+        // Aparecem de verdade: a PF118 cita fórmulas que montam SVG.
+        var json = Render("A fórmula usa <path> na propriedade.");
+
+        Assert.Contains("<path>", json);
+        Assert.DoesNotContain(EscapeUnicode, json);
+    }
+
+    [Fact]
+    public void AccentsStayReadable()
+    {
+        var json = Render("não há descrição");
+
+        Assert.Contains("não há descrição", json);
+        Assert.DoesNotContain(EscapeUnicode, json);
+    }
+
+    [Fact]
+    public void QuotesAndBackslashesAreStillEscapedBecauseJsonRequiresIt()
+    {
+        // Estes dois não são escolha de estilo: sem escapar, o documento deixa
+        // de ser JSON válido.
+        var json = Render(@"aspas "" e barra \ no meio");
+
+        Assert.Contains(@"\""", json);
+        Assert.Contains(@"\\", json);
+        Assert.NotNull(JsonDocument.Parse(json));
+    }
+}
