@@ -136,6 +136,26 @@ public class RealArtifactTests
             $"pascal-type devia reduzir bastante: camel={comCamel}, pascal={comPascal}");
     }
 
+    [Fact]
+    public void RealMsapp_UndefinedVariableRuleDoesNotFloodWithFalsePositives()
+    {
+        // PF104 tem severidade Error: um falso positivo quebra o build de quem
+        // confiou na ferramenta. Este app tem 827 fórmulas reais e funciona —
+        // um punhado de achados é plausível, dezenas significam buraco no
+        // resolvedor de símbolos, não app ruim.
+        var project = ProjectLoader.Load(RealMsapp);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        var achados = result.Diagnostics.Where(d => d.RuleId == "PF104").ToList();
+
+        Assert.True(
+            achados.Count <= 5,
+            "PF104 achou nomes demais num app real que funciona; o resolvedor está deixando "
+            + "passar alguma categoria de símbolo: "
+            + string.Join(", ", achados.Take(15).Select(d => d.Message)));
+    }
+
     // ---- solução exportada (aguardando fixture) ----
 
     [SkippableFact]

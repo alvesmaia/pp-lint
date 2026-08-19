@@ -58,6 +58,7 @@ public sealed class VariableGraph
         var definitions = new Dictionary<string, VariableDefinition>(StringComparer.OrdinalIgnoreCase);
         var readsByScreen = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         var candidateReads = new List<(string Name, SourceLocation Location)>();
+        var inferredDataSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var (property, screen) in AllFormulas(app))
         {
@@ -67,6 +68,8 @@ public sealed class VariableGraph
 
             var rowScopes = RowScopeCollector.Collect(parsed.Root);
             var defined = new HashSet<TexlNode>();
+
+            CollectInferredDataSources(parsed.Root, inferredDataSources);
 
             CollectDefinitions(parsed.Root, property, screen, definitions, defined);
 
@@ -86,17 +89,81 @@ public sealed class VariableGraph
                 if (screen is not null)
                     screens.Add(screen);
 
-                candidateReads.Add((name, property.Location));
+                // Continua contando como leitura — senão PF101 acusaria variáveis
+                // usadas dentro de Filter — mas não entra na lista de "nunca
+                // definidos": ali dentro o nome pode ser uma coluna do registro,
+                // e não temos o schema da tabela para distinguir.
+                if (!IsInsideRowScopeFunction(identifier) && !IsQualifierOfDottedName(identifier))
+                    candidateReads.Add((name, property.Location));
             }
         }
 
         var unresolved = candidateReads
             .Where(r => !definitions.ContainsKey(r.Name))
+            .Where(r => !inferredDataSources.Contains(r.Name))
             .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => new VariableReference(g.Key, g.First().Location))
             .ToList();
 
         return new VariableGraph(definitions, readsByScreen, unresolved);
+    }
+
+    /// <summary>
+    /// Funções que abrem escopo de linha: dentro delas, um identificador solto
+    /// costuma ser coluna do registro (Filter(Pedidos, Title = "x")), e não
+    /// temos o schema da tabela para provar o contrário.
+    /// </summary>
+    private static readonly HashSet<string> RowScopeFunctions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Filter", "LookUp", "ForAll", "With", "Sort", "SortByColumns", "Search",
+        "AddColumns", "DropColumns", "RenameColumns", "ShowColumns",
+        "GroupBy", "Ungroup", "Concat", "Sum", "Average", "Min", "Max", "StdevP", "VarP",
+        "CountIf", "CountRows", "First", "FirstN", "Last", "LastN", "Distinct",
+        "Patch", "UpdateIf", "RemoveIf", "Collect", "ClearCollect", "Refresh",
+    };
+
+    /// <summary>
+    /// Um nome no primeiro argumento de Refresh, Patch, LookUp ou Filter é uma
+    /// fonte de dados, ainda que não apareça nos metadados do app — nem toda
+    /// conexão fica registrada em DataSources.json. Inferir pelo uso evita
+    /// acusar de "nome inexistente" algo que o app claramente consulta.
+    /// </summary>
+    private static void CollectInferredDataSources(TexlNode root, HashSet<string> inferred)
+    {
+        foreach (var name in RowScopeFunctions)
+        {
+            foreach (var call in AstWalker.Calls(root, name))
+            {
+                var args = call.Args?.ChildNodes;
+                if (args is { Count: > 0 } && args[0] is FirstNameNode source)
+                    inferred.Add(source.Ident.Name.Value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// O nome à esquerda de um ponto — TraceSeverity.Warning, Icon.Add,
+    /// ImageRotation.None. O Power Apps traz dezenas desses enums e objetos de
+    /// host, e listá-los um a um seria perseguir alvo móvel. Um erro de digitação
+    /// nessa posição escapa, o que é o lado certo para errar numa regra de
+    /// severidade Error.
+    /// </summary>
+    private static bool IsQualifierOfDottedName(TexlNode node) =>
+        node.Parent is DottedNameNode dotted && ReferenceEquals(dotted.Left, node);
+
+    private static bool IsInsideRowScopeFunction(TexlNode node)
+    {
+        for (var current = node.Parent; current is not null; current = current.Parent)
+        {
+            if (current is CallNode call
+                && AstWalker.FunctionName(call) is { } name
+                && RowScopeFunctions.Contains(name))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void CollectDefinitions(

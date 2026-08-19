@@ -40,6 +40,35 @@ public static class PowerFxBuiltins
         "UpdateContextIf", "ShowColumns", "RenameColumns", "DropColumns", "AddColumns",
     ];
 
+    /// <summary>
+    /// Valores de enum que o Power Apps aceita sem qualificar o enum:
+    /// Navigate(scr, Fade) e SortByColumns(t, "c", Descending) são código
+    /// corrente. Sem eles, cada um vira "nome nunca definido".
+    /// </summary>
+    private static readonly string[] EnumValues =
+    [
+        // ScreenTransition
+        "Fade", "Cover", "UnCover", "CoverRight", "UnCoverRight",
+        // SortOrder
+        "Ascending", "Descending",
+        // FormMode
+        "Edit", "New", "View",
+        // Align / VerticalAlign
+        "Center", "Justify", "Start", "End", "Top", "Bottom", "Middle",
+        // FontWeight / Underline
+        "Bold", "Semibold", "Lighter", "Strikethrough",
+        // DisplayMode
+        "Disabled", "Edit", "View",
+        // NotificationType
+        "Success", "Warning", "Information",
+        // ImagePosition / Layout
+        "Fill", "Fit", "Stretch", "Tile", "Horizontal", "Vertical",
+        // BorderStyle
+        "Solid", "Dashed", "Dotted",
+        // genéricos
+        "None", "Auto", "Scroll", "Hidden", "Normal",
+    ];
+
     static PowerFxBuiltins()
     {
         var engine = new Engine(new PowerFxConfig());
@@ -48,7 +77,9 @@ public static class PowerFxBuiltins
             .Concat(BehaviorFunctions)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        EnumNames = Enums.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        EnumNames = Enums
+            .Concat(EnumValues)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     public static IReadOnlySet<string> FunctionNames { get; }
