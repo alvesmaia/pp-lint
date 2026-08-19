@@ -39,6 +39,16 @@ public sealed class SpecialCharacterNameRule : IRule
             }
         }
 
+        foreach (var table in ctx.Project.Tables)
+        {
+            Verificar(ctx, table.SchemaName, table.Location, "A tabela");
+
+            // Colunas do esquema padrão não foram escolhidas por ninguém, e
+            // várias já nascem fora do alfabeto que a regra exige.
+            foreach (var column in table.Columns.Where(c => c.IsCustom && c.DerivedFrom is null))
+                Verificar(ctx, column.SchemaName, table.Location, "A coluna");
+        }
+
         foreach (var flow in ctx.Project.Flows)
         {
             Verificar(ctx, flow.Name, flow.Location, "O fluxo");

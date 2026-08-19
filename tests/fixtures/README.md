@@ -36,3 +36,41 @@ regras de coluna. Salve o `.zip` aqui com esse nome.
 
 Antes de commitar: remova nomes de pessoas, e-mails, URLs de ambiente e qualquer
 dado de cliente.
+
+## solucao-dataverse/
+
+Solução descompactada real, com três tabelas do Dataverse (`gmx_Expense`,
+`gmx_ExpenseCategory`, `gmx_ExpenseReport`) e 75 colunas entre customizadas e do sistema.
+
+Origem: [pnp/powerplatform-samples](https://github.com/pnp/powerplatform-samples),
+amostra `ai-driven-expense-report-processing`, licença MIT. Só o manifesto e os
+`Entity.xml` foram versionados; formulários, consultas salvas e o restante da solução
+ficaram de fora por não interessarem às regras.
+
+É o formato que o `pac solution unpack` produz e que os times versionam no repositório —
+`Other/Solution.xml` em vez de `solution.xml` na raiz. Serve às regras de nomenclatura de
+coluna, que sem ele seriam escritas contra suposição.
+
+O que este artefato ensinou, e que nenhum fixture sintético teria ensinado:
+
+- `crfbf_ExpenseReport` usa prefixo de outro publisher que não o `gmx` da solução — o
+  achado que a NM020 existe para pegar, num artefato publicado.
+- `gmx_amount_Base` traz `IsCustomField=1` **apesar de ser gerada pelo Dataverse** para o
+  par de moeda. Filtrar só por `IsCustomField` produziria falso positivo; o discriminador
+  honesto é `<CalculationOf>`, que diz de qual coluna ela deriva.
+- `statecode`, `statuscode` e as colunas de auditoria são minúsculas e do sistema. Uma
+  regra de PascalCase que não filtrasse por coluna customizada acusaria dezenas delas.
+
+## solucao-dataverse-exportada.zip
+
+O mesmo conteúdo de `solucao-dataverse/`, na embalagem que a exportação do portal produz:
+`solution.xml` na raiz e as tabelas dentro de `customizations.xml`, em vez de separadas em
+`Entities/<nome>/Entity.xml`.
+
+Foi remontado a partir dos mesmos `Entity.xml` — o `pac solution unpack` faz exatamente a
+operação inversa, movendo o XML de dentro do `customizations.xml` para arquivos. Os
+elementos `<Entity>` são os originais, byte a byte; só a embalagem muda.
+
+Existe porque exportar do portal é o caminho que o usuário aciona, e os dois formatos
+precisam produzir os mesmos achados — se divergirem, um dos dois caminhos está lendo
+errado. É o que o teste `FindsTheSameIssuesAsTheUnpackedLayout` verifica.

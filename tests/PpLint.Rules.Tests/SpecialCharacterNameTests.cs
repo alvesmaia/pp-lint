@@ -212,3 +212,65 @@ public class SpecialCharacterNameTests
         Assert.Contains("ã", d.Message);
     }
 }
+
+/// <summary>
+/// NM040 sobre nomes de coluna. É onde o problema dói mais: o nome interno da
+/// coluna vira 'Descri_x00e7__x00e3_o', e é esse que fórmulas e fluxos precisam
+/// usar.
+/// </summary>
+public class SpecialCharacterColumnTests
+{
+    private static SourceLocation Loc(string s) => new("sol.zip", "Entities/t/Entity.xml", s, 0, 0);
+
+    private static LintResult Run(params (string Schema, bool Custom)[] columns)
+    {
+        var cols = columns
+            .Select(c => new DataColumn(c.Schema.ToLowerInvariant(), c.Schema, "nvarchar", false)
+            {
+                IsCustom = c.Custom,
+            })
+            .ToList();
+
+        var project = new PowerPlatformProject { SourcePath = "sol.zip" };
+        project.Tables.Add(new DataTable("tabela", "Tabela", cols, Loc("tabela")));
+
+        return new RuleEngine([new SpecialCharacterNameRule()]).Run(project, PpLintConfig.Default);
+    }
+
+    [Fact]
+    public void ColumnWithAccentIsAnError()
+    {
+        var d = Assert.Single(Run(("gmx_Descrição", true)).Diagnostics);
+
+        Assert.Equal("NM040", d.RuleId);
+        Assert.Equal(Severity.Error, d.Severity);
+        Assert.Contains("gmx_Descrição", d.Message);
+    }
+
+    [Fact]
+    public void ColumnWithSpaceIsAnError() =>
+        Assert.Single(Run(("gmx_Data de Entrega", true)).Diagnostics);
+
+    [Fact]
+    public void CleanColumnIsAccepted() =>
+        Assert.Empty(Run(("gmx_DataEntrega", true)).Diagnostics);
+
+    [Fact]
+    public void SystemColumnsAreNotJudged()
+    {
+        // Colunas do esquema padrão não foram escolhidas por ninguém, e várias
+        // já vêm fora do alfabeto que a regra exige.
+        Assert.Empty(Run(("statecode", false), ("createdon", false)).Diagnostics);
+    }
+
+    [Fact]
+    public void TableNameIsAlsoJudged()
+    {
+        var project = new PowerPlatformProject { SourcePath = "sol.zip" };
+        project.Tables.Add(new DataTable("relatório", "Relatório", [], Loc("relatório")));
+
+        var result = new RuleEngine([new SpecialCharacterNameRule()]).Run(project, PpLintConfig.Default);
+
+        Assert.Single(result.Diagnostics);
+    }
+}

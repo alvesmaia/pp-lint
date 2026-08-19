@@ -164,7 +164,7 @@ morto, `PERF` performance e delegação, `SEC` segurança, `SOL` solução/ALM.
 | NM014 | Propriedade customizada de componente fora do padrão | Info |
 | NM020 | Coluna Dataverse sem o prefixo do publisher da solução | Error |
 | NM021 | `SchemaName` de coluna Dataverse fora de PascalCase | Warn |
-| NM022 | Coluna SharePoint com espaço ou acento (vira `_x0020_` nas fórmulas) | Error |
+| NM022 | Coluna SharePoint com espaço ou acento — **coberta pela NM040**, que julga o nome de toda coluna criada | — |
 | NM023 | Display name divergente do schema name além do aceitável | Info |
 | NM030 | Fluxo com nome default ou fora do padrão verbo-substantivo | Warn |
 | NM031 | Ação de fluxo com nome default (`Compose 2`, `Apply_to_each_3`) | Error |

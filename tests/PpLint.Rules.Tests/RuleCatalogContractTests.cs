@@ -149,8 +149,25 @@ public class RuleCatalogContractTests
             new SourceLocation("teste.zip", "Workflows/f.json", "Inicializar", 0, 0)));
 
 
+        // Uma tabela com coluna criada por alguÃ©m, senÃ£o as regras de coluna nÃ£o
+        // tÃªm alvo. O manifesto precisa vir junto: a NM020 compara com o
+        // publisher e desiste quando nÃ£o hÃ¡ nenhum declarado.
+        var tabela = new DataTable(
+            "gmx_pedido",
+            "gmx_Pedido",
+            [
+                new DataColumn("gmx_valor", "gmx_Valor", "money", false)
+                {
+                    IsCustom = true,
+                    DisplayName = "Valor",
+                },
+            ],
+            new SourceLocation("teste.zip", "Entities/gmx_Pedido/Entity.xml", "gmx_pedido", 0, 0));
+
         var project = ProjectWith(app);
         project.Flows.Add(flow);
+        project.Tables.Add(tabela);
+        project.Solution = new SolutionInfo("Teste", "gmx", "1.0.0.0", Managed: false);
 
         var result = RuleEngine.CreateDefault(RulesAssembly).Run(project, PpLintConfig.Default);
 
@@ -199,8 +216,8 @@ public class RuleCatalogContractTests
     [Fact]
     public void EveryRuleInTheCatalogHasDocumentation()
     {
-        // Regra sem documento faz 'pp-lint explain' e o SARIF saírem mancos
-        // justamente para a regra nova, que é a que ninguém conhece.
+        // Regra sem documento faz 'pp-lint explain' e o SARIF saï¿½rem mancos
+        // justamente para a regra nova, que ï¿½ a que ninguï¿½m conhece.
         var semDoc = RulesAssembly.GetTypes()
             .Select(t => t.GetCustomAttributes(typeof(RuleAttribute), false).FirstOrDefault())
             .OfType<RuleAttribute>()
@@ -215,7 +232,7 @@ public class RuleCatalogContractTests
     [Fact]
     public void EveryDocumentCorrespondsToARuleInTheCatalog()
     {
-        // O contrário também: documento órfão significa regra removida ou ID
+        // O contrï¿½rio tambï¿½m: documento ï¿½rfï¿½o significa regra removida ou ID
         // digitado errado no nome do arquivo.
         var ids = RulesAssembly.GetTypes()
             .Select(t => t.GetCustomAttributes(typeof(RuleAttribute), false).FirstOrDefault())
