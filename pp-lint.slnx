@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/PpLint.Cli/PpLint.Cli.csproj" />
     <Project Path="src/PpLint.Core/PpLint.Core.csproj" />
+    <Project Path="src/PpLint.Extractors/PpLint.Extractors.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PpLint.Cli.Tests/PpLint.Cli.Tests.csproj" />
     <Project Path="tests/PpLint.Core.Tests/PpLint.Core.Tests.csproj" />
+    <Project Path="tests/PpLint.Extractors.Tests/PpLint.Extractors.Tests.csproj" />
   </Folder>
 </Solution>

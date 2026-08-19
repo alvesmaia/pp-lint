@@ -671,7 +671,7 @@ public class ArtifactSourceTests
         var path = Path.Combine(Path.GetTempPath(), $"pplint-{Guid.NewGuid():N}.zip");
         File.WriteAllText(path, "isto nao e um zip");
         var ex = Assert.Throws<ArtifactException>(() => ArtifactSourceFactory.Open(path));
-        Assert.Contains("inválido", ex.Message);
+        Assert.Contains("não é um pacote zip válido", ex.Message);
     }
 
     [Fact]
@@ -5332,7 +5332,7 @@ public class EndToEndTests
         var (code, _, err) = Invoke("check", path);
 
         Assert.Equal(2, code);
-        Assert.Contains("inválido", err);
+        Assert.Contains("não é um pacote zip válido", err);
     }
 
     [Fact]
