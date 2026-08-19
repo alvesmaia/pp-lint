@@ -9,10 +9,13 @@ public sealed record CliOptions(
     IReadOnlyList<string> Paths,
     string Format,
     string? Output,
-    Severity FailOn,
+    Severity? FailOn,
     bool NoColor,
     bool Quiet,
-    string? ExplainRuleId);
+    string? ExplainRuleId,
+    IReadOnlyList<string> Select,
+    IReadOnlyList<string> Ignore,
+    string? ConfigPath);
 
 public sealed record ParseResult<T>(bool IsSuccess, T? Value, string? Error)
 {
@@ -43,9 +46,12 @@ public static class ArgumentParser
             return ParseResult<CliOptions>.Fail($"Comando desconhecido: '{args[0]}'. Use 'pp-lint --help'.");
 
         var paths = new List<string>();
+        var select = new List<string>();
+        var ignore = new List<string>();
         var format = "text";
         string? output = null;
-        var failOn = Severity.Error;
+        string? configPath = null;
+        Severity? failOn = null;
         var noColor = false;
         var quiet = false;
         string? explainRuleId = null;
@@ -58,27 +64,39 @@ public static class ArgumentParser
                 case "--format":
                 case "--output":
                 case "--fail-on":
+                case "--select":
+                case "--ignore":
+                case "--config":
                     if (i + 1 >= args.Length)
                         return ParseResult<CliOptions>.Fail($"A opção {arg} exige um valor.");
                     var value = args[++i];
-                    if (arg == "--format")
+                    switch (arg)
                     {
-                        if (!ValidFormats.Contains(value))
-                            return ParseResult<CliOptions>.Fail(
-                                $"Formato inválido: '{value}'. Válidos: {string.Join(", ", ValidFormats)}.");
-                        format = value;
-                    }
-                    else if (arg == "--output")
-                    {
-                        output = value;
-                    }
-                    else
-                    {
-                        var parsed = ParseSeverity(value);
-                        if (parsed is null)
-                            return ParseResult<CliOptions>.Fail(
-                                $"Severidade inválida: '{value}'. Válidas: error, warning, info.");
-                        failOn = parsed.Value;
+                        case "--format":
+                            if (!ValidFormats.Contains(value))
+                                return ParseResult<CliOptions>.Fail(
+                                    $"Formato inválido: '{value}'. Válidos: {string.Join(", ", ValidFormats)}.");
+                            format = value;
+                            break;
+                        case "--output":
+                            output = value;
+                            break;
+                        case "--config":
+                            configPath = value;
+                            break;
+                        case "--select":
+                            select.AddRange(SplitList(value));
+                            break;
+                        case "--ignore":
+                            ignore.AddRange(SplitList(value));
+                            break;
+                        default:
+                            var parsed = ParseSeverity(value);
+                            if (parsed is null)
+                                return ParseResult<CliOptions>.Fail(
+                                    $"Severidade inválida: '{value}'. Válidas: error, warning, info.");
+                            failOn = parsed.Value;
+                            break;
                     }
                     break;
 
@@ -108,8 +126,12 @@ public static class ArgumentParser
             return ParseResult<CliOptions>.Fail("O comando 'explain' exige um ID de regra, por exemplo 'PF101'.");
 
         return ParseResult<CliOptions>.Ok(new CliOptions(
-            command.Value, paths, format, output, failOn, noColor, quiet, explainRuleId));
+            command.Value, paths, format, output, failOn, noColor, quiet, explainRuleId,
+            select, ignore, configPath));
     }
+
+    private static IEnumerable<string> SplitList(string value) =>
+        value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static Severity? ParseSeverity(string value) => value.ToLowerInvariant() switch
     {
@@ -120,5 +142,6 @@ public static class ArgumentParser
     };
 
     private static ParseResult<CliOptions> Ok(CliCommand command) =>
-        ParseResult<CliOptions>.Ok(new CliOptions(command, [], "text", null, Severity.Error, false, false, null));
+        ParseResult<CliOptions>.Ok(new CliOptions(
+            command, [], "text", null, null, false, false, null, [], [], null));
 }

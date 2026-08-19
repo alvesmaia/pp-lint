@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using PpLint.Core;
+using PpLint.Core.Configuration;
 using PpLint.Core.Model;
 using PpLint.Core.Rules;
 using PpLint.Core.Scoring;
+using PpLint.Core.Suppression;
 using PpLint.Extractors;
 using PpLint.Rules.Naming;
 
@@ -69,7 +71,19 @@ public static class Program
     {
         if (options.Format != "text")
         {
-            stderr.WriteLine($"O formato '{options.Format}' será entregue na Fase 2. Use 'text'.");
+            stderr.WriteLine($"O formato '{options.Format}' será entregue na Fase 2c. Use 'text'.");
+            return 2;
+        }
+
+        PpLintConfig config;
+        bool usedConfigFile;
+        try
+        {
+            (config, usedConfigFile) = LoadConfig(options);
+        }
+        catch (ConfigException ex)
+        {
+            stderr.WriteLine(ex.Message);
             return 2;
         }
 
@@ -91,7 +105,7 @@ public static class Program
                 return 2;
             }
 
-            var result = engine.Run(project, PpLintConfig.Default);
+            var result = engine.Run(project, config, SuppressionIndex.Build(project));
             diagnostics.AddRange(result.Diagnostics);
             tallies.AddRange(result.Tallies);
         }
@@ -103,8 +117,57 @@ public static class Program
 
         stdout.Write(TextReporter.Render(diagnostics, compliance, stopwatch.Elapsed, useColor, options.Quiet));
 
-        return diagnostics.Any(d => d.Severity >= options.FailOn) ? 1 : 0;
+        if (!usedConfigFile && diagnostics.Any(d => d.Category == RuleCategory.Naming))
+        {
+            stderr.WriteLine(
+                $"Nota: usando o preset de nomenclatura '{config.PresetName}' porque não há {ConfigLocator.FileName}. "
+                + $"Presets disponíveis: {string.Join(", ", NamingPresets.Names)}. "
+                + $"Crie um {ConfigLocator.FileName} com [pp-lint] preset = \"...\" para escolher outro.");
+        }
+
+        return diagnostics.Any(d => d.Severity >= config.FailOn) ? 1 : 0;
     }
+
+    /// <summary>
+    /// Monta a configuração final e informa se algum arquivo foi de fato usado —
+    /// é o que decide se vale avisar sobre o preset default.
+    /// </summary>
+    private static (PpLintConfig Config, bool UsedFile) LoadConfig(CliOptions options)
+    {
+        string? path;
+
+        if (options.ConfigPath is not null)
+        {
+            if (!File.Exists(options.ConfigPath))
+                throw new ConfigException($"Arquivo de configuração não encontrado: '{options.ConfigPath}'.");
+            path = options.ConfigPath;
+        }
+        else
+        {
+            path = ConfigLocator.Find(Directory.GetCurrentDirectory());
+        }
+
+        var file = ConfigFile.Empty;
+        if (path is not null)
+        {
+            try
+            {
+                file = TomlConfigReader.Read(File.ReadAllText(path));
+            }
+            catch (ConfigException ex)
+            {
+                throw new ConfigException($"Erro em '{path}': {ex.Message}", ex);
+            }
+        }
+
+        var cli = new CliOverrides(
+            Select: options.Select.Count > 0 ? options.Select : null,
+            Ignore: options.Ignore.Count > 0 ? options.Ignore : null,
+            FailOn: options.FailOn);
+
+        return (ConfigResolver.Resolve(file, cli), path is not null);
+    }
+
 
     private static IEnumerable<string> KnownRuleIds() =>
         typeof(DefaultControlNameRule).Assembly
