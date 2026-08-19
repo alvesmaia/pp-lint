@@ -211,3 +211,75 @@ public class GeneratedControlTests
         Assert.Equal(2, Run(new DefaultControlNameRule(), project).Diagnostics.Count);
     }
 }
+
+public class MisleadingPrefixTests
+{
+    [Fact]
+    public void Reports_PrefixThatBelongsToAnotherControlType()
+    {
+        // Copiar-colar clássico: nasceu botão, virou toggle, ninguém renomeou.
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("btnTeste", "toggleSwitch"))));
+        var d = Assert.Single(Run(new ControlPrefixRule(), project).Diagnostics);
+
+        Assert.Equal("NM011", d.RuleId);
+        Assert.Contains("btn", d.Message);          // o prefixo enganoso
+        Assert.Contains("button", d.Message);       // o tipo que ele sugere
+        Assert.Contains("toggleSwitch", d.Message); // o tipo real
+        Assert.Contains("tgl", d.Message);          // o prefixo correto
+    }
+
+    [Fact]
+    public void GenericMessage_WhenNameHasNoKnownPrefix()
+    {
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("SalvarPedido", "button"))));
+        var d = Assert.Single(Run(new ControlPrefixRule(), project).Diagnostics);
+
+        Assert.DoesNotContain("sugere", d.Message);
+        Assert.Contains("btn", d.Message);
+    }
+
+    [Fact]
+    public void GenericMessage_WhenPrefixIsUnknown()
+    {
+        // 'svg' não é prefixo de nenhum tipo configurado.
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("svgTabuleiro", "button"))));
+        var d = Assert.Single(Run(new ControlPrefixRule(), project).Diagnostics);
+
+        Assert.DoesNotContain("sugere", d.Message);
+    }
+
+    [Fact]
+    public void PrefixMustBeFollowedByUppercaseOrDigit()
+    {
+        // 'imgs' não é o prefixo 'img' seguido de camelCase — é outra palavra.
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("imgsDoProduto", "button"))));
+        var d = Assert.Single(Run(new ControlPrefixRule(), project).Diagnostics);
+
+        Assert.DoesNotContain("sugere", d.Message);
+    }
+
+    [Fact]
+    public void StillReportsOneViolationPerControl()
+    {
+        var project = ProjectWith(App("A", Screen("scrHome",
+            Ctl("btnTeste", "toggleSwitch"),
+            Ctl("lblOutro", "toggleSwitch"))));
+
+        var result = Run(new ControlPrefixRule(), project);
+        Assert.Equal(2, result.Diagnostics.Count);
+        Assert.Equal(2, Assert.Single(result.Tallies).Evaluated);
+    }
+
+    [Fact]
+    public void SharedPrefixPicksAStableType()
+    {
+        // 'lbl' serve a label e textcanvas: a mensagem precisa ser determinística.
+        var project = ProjectWith(App("A", Screen("scrHome", Ctl("lblTitulo", "toggleSwitch"))));
+
+        var first = Assert.Single(Run(new ControlPrefixRule(), project).Diagnostics).Message;
+        var second = Assert.Single(Run(new ControlPrefixRule(), project).Diagnostics).Message;
+
+        Assert.Equal(first, second);
+        Assert.Contains("lbl", first);
+    }
+}

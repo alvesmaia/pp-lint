@@ -68,11 +68,25 @@ apps de tamanhos diferentes.
 |---|---|---|
 | NM010 | Controle com nome padrão do Studio (`Button1`, `Screen1`) | Erro |
 | NM011 | Prefixo do controle não corresponde ao tipo (`btn`, `lbl`, …) | Aviso |
+| NM011 | — inclui prefixo de **outro** tipo: `btnTeste` num `toggleSwitch` | Aviso |
 | PF101 | Variável global definida e nunca lida | Aviso |
 | PF110 | Condição constante (`If(2 > 1, …)`, `If(true, …)`) | Erro |
 | FL201 | Variável de fluxo inicializada e nunca lida | Aviso |
 
 `pp-lint rules` lista o catálogo instalado.
+
+O tipo do controle vem do `Template.Name` gravado pelo próprio Studio, nunca do nome —
+por isso a NM011 distingue duas situações que têm causas diferentes:
+
+```
+'SalvarPedido' é do tipo 'button' e deveria começar com o prefixo 'btn'.
+'btnTeste' usa o prefixo 'btn', que sugere 'button', mas o controle é do
+tipo 'toggleSwitch'. Use o prefixo 'tgl'.
+```
+
+A segunda é a mais séria: um prefixo de outro tipo costuma ser copiar-colar de um
+controle seguido de troca de tipo sem renomear, e faz quem lê a fórmula depois
+acreditar num tipo que não existe mais.
 
 ## Garantias
 
