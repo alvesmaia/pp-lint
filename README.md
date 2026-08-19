@@ -62,18 +62,48 @@ apps de tamanhos diferentes.
 | 1 | Achados no nível de `--fail-on` ou acima |
 | 2 | Erro de execução (artefato inválido, opção desconhecida) |
 
-## Regras da Fase 1
+## Regras
 
 | Id | Regra | Severidade |
 |---|---|---|
+| NM001 | Variável global fora da convenção (`varTotal`) | Aviso |
+| NM002 | Variável de contexto fora da convenção (`locFiltro`) | Aviso |
+| NM003 | Coleção fora da convenção (`colItens`) | Aviso |
 | NM010 | Controle com nome padrão do Studio (`Button1`, `Screen1`) | Erro |
-| NM011 | Prefixo do controle não corresponde ao tipo (`btn`, `lbl`, …) | Aviso |
-| NM011 | — inclui prefixo de **outro** tipo: `btnTeste` num `toggleSwitch` | Aviso |
+| NM011 | Prefixo do controle não corresponde ao tipo, inclusive prefixo de **outro** tipo | Aviso |
 | PF101 | Variável global definida e nunca lida | Aviso |
+| PF102 | Variável de contexto definida e nunca lida **na tela dela** | Aviso |
+| PF103 | Coleção criada e nunca usada | Aviso |
+| PF104 | Nome lido mas nunca definido — quase sempre erro de digitação | Erro |
+| PF105 | Variável global lida em uma única tela; caberia contexto | Informação |
+| PF106 | Mesmo `Set` com o mesmo valor duas vezes na mesma fórmula | Aviso |
 | PF110 | Condição constante (`If(2 > 1, …)`, `If(true, …)`) | Erro |
 | FL201 | Variável de fluxo inicializada e nunca lida | Aviso |
 
 `pp-lint rules` lista o catálogo instalado.
+
+### Como o pp-lint entende variáveis
+
+Variáveis de contexto pertencem a uma tela — é assim que o Power Fx funciona.
+Uma `locFiltro` criada em `scrPedidos` e referenciada em `scrDetalhe` não conta
+como uso: lá é outra variável. `Navigate(scrDestino, Fade, {locId: 7})` cria a
+variável na tela **de destino**, e é lá que o pp-lint procura leituras.
+
+Globais e coleções valem no app inteiro.
+
+Para decidir se um identificador é variável, o pp-lint descarta primeiro o que tem
+dono conhecido: controles, telas, fontes de dados, funções e enums do Power Fx, e
+escopos de linha (`ThisItem`, `Self`, `Parent`, apelidos de `As`, campos de
+`With`). É isso que permite a PF104 apontar erro de digitação sem acusar cada
+galeria do app.
+
+A PF104 é deliberadamente conservadora, porque tem severidade `Error`. Ela não
+reporta nomes dentro de funções de tabela (`Filter`, `Sort`, `LookUp`), onde o
+identificador pode ser uma coluna do registro; nem nomes à esquerda de um ponto
+(`TraceSeverity.Warning`), que são enums e objetos do host; nem nomes que o app
+usa como fonte de dados (`Refresh(GameServer)`), ainda que não estejam declarados
+nos metadados. Contra um app real de 827 fórmulas, ela não produz nenhum falso
+positivo — e há um teste que falha se isso mudar.
 
 O tipo do controle vem do `Template.Name` gravado pelo próprio Studio, nunca do nome —
 por isso a NM011 distingue duas situações que têm causas diferentes:

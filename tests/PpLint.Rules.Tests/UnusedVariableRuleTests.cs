@@ -136,3 +136,56 @@ public class UnusedVariableRuleTests
         Assert.Equal(0, Assert.Single(Run(new UnusedCollectionRule(), project).Tallies).Evaluated);
     }
 }
+
+public class CollectionUsageDetectionTests
+{
+    private static SourceLocation Loc(string? s) => new("a.msapp", "Controls/1.json", s, 0, 0);
+
+    private static LintResult Run(params (string Property, string Script)[] formulas)
+    {
+        var screen = new Control { Name = "scrA", TemplateName = "screen", IsScreen = true, Location = Loc("scrA") };
+        var button = new Control { Name = "btnA", TemplateName = "button", Location = Loc("btnA") };
+        foreach (var (property, script) in formulas)
+            button.Properties.Add(new PowerFxProperty(property, script, Loc($"btnA.{property}")));
+        screen.AddChild(button);
+
+        var app = new CanvasApp { Name = "App", Location = Loc(null) };
+        app.Screens.Add(screen);
+
+        var project = new PowerPlatformProject { SourcePath = "a.msapp" };
+        project.Apps.Add(app);
+
+        return new RuleEngine([new UnusedCollectionRule()]).Run(project, PpLintConfig.Default);
+    }
+
+    [Fact]
+    public void CollectionReadInsideFilterCountsAsUse()
+    {
+        // Uso mais comum de coleção: Filter(colItens, ...). Se isso não contar,
+        // a regra acusa como órfã toda coleção realmente consumida.
+        Assert.Empty(Run(
+            ("OnSelect", "ClearCollect(colItens, [1])"),
+            ("Items", "Filter(colItens, Value > 0)")).Diagnostics);
+    }
+
+    [Fact]
+    public void CollectionReadInsideForAllCountsAsUse()
+    {
+        Assert.Empty(Run(
+            ("OnSelect", "ClearCollect(colItens, [1])"),
+            ("Text", "Concat(ForAll(colItens, Value), Value)")).Diagnostics);
+    }
+
+    [Fact]
+    public void CollectionUsedInTheSameFormulaCountsAsUse()
+    {
+        Assert.Empty(Run(
+            ("OnSelect", "ClearCollect(colItens, [1]); Notify(CountRows(colItens))")).Diagnostics);
+    }
+
+    [Fact]
+    public void TrulyUnusedCollectionIsStillReported()
+    {
+        Assert.Single(Run(("OnSelect", "ClearCollect(colOrfa, [1])")).Diagnostics);
+    }
+}

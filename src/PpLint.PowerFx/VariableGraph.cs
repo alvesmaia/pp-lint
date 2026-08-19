@@ -60,27 +60,42 @@ public sealed class VariableGraph
         var candidateReads = new List<(string Name, SourceLocation Location)>();
         var inferredDataSources = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Duas passadas. A primeira descobre tudo o que o app define, porque uma
+        // leitura pode aparecer numa fórmula anterior à definição — e porque o
+        // Studio registra as coleções em DataSources.json, o que faria o
+        // resolvedor classificá-las como fonte de dados e descartar suas leituras.
+        // A árvore é parseada uma vez e reaproveitada: reparsear criaria nós
+        // novos, e o conjunto de nós marcados como definição deixaria de casar.
+        var analisadas = new List<(PowerFxProperty Property, string? Screen, TexlNode Root, HashSet<TexlNode> Defined)>();
+
         foreach (var (property, screen) in AllFormulas(app))
         {
             var parsed = PowerFxParser.Parse(property.Script);
             if (parsed.Root is null)
                 continue;
 
-            var rowScopes = RowScopeCollector.Collect(parsed.Root);
             var defined = new HashSet<TexlNode>();
 
             CollectInferredDataSources(parsed.Root, inferredDataSources);
-
             CollectDefinitions(parsed.Root, property, screen, definitions, defined);
 
-            foreach (var identifier in AstWalker.Identifiers(parsed.Root))
+            analisadas.Add((property, screen, parsed.Root, defined));
+        }
+
+        foreach (var (property, screen, root, defined) in analisadas)
+        {
+            var rowScopes = RowScopeCollector.Collect(root);
+
+            foreach (var identifier in AstWalker.Identifiers(root))
             {
                 if (defined.Contains(identifier))
                     continue;
 
                 var name = identifier.Ident.Name.Value;
 
-                if (!resolver.IsVariableCandidate(name, rowScopes))
+                // Um nome que o app define é variável, mesmo que também apareça
+                // nos metadados como fonte de dados.
+                if (!definitions.ContainsKey(name) && !resolver.IsVariableCandidate(name, rowScopes))
                     continue;
 
                 if (!readsByScreen.TryGetValue(name, out var screens))
