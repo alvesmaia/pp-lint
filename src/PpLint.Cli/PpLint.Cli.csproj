@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PpLint.Core\PpLint.Core.csproj" />
+    <ProjectReference Include="..\PpLint.Extractors\PpLint.Extractors.csproj" />
+    <ProjectReference Include="..\PpLint.Rules\PpLint.Rules.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
