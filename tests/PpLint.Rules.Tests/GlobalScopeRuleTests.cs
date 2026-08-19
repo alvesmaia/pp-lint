@@ -133,10 +133,13 @@ public class GlobalScopeRuleTests
     }
 
     [Fact]
-    public void PF106_EvaluatesOnePerSetPair()
+    public void PF106_EvaluatesEverySetWithALiteralValue()
     {
+        // Os dois Set são alvos examinados; um deles é a violação.
         var project = ProjectWith(("scrA", "OnSelect", "Set(varX, 1); Set(varX, 1)"));
+        var tally = Assert.Single(Run(new RedundantSetRule(), project).Tallies);
 
-        Assert.Equal(1, Assert.Single(Run(new RedundantSetRule(), project).Tallies).Evaluated);
+        Assert.Equal(2, tally.Evaluated);
+        Assert.Equal(1, tally.Violations);
     }
 }

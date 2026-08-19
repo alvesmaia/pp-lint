@@ -40,10 +40,13 @@ public sealed class RedundantSetRule : IRule
 
                     var name = target.Ident.Name.Value;
 
+                    // Cada Set com valor literal é um alvo examinado. Contar só
+                    // os redundantes faria Evaluated == Violations, e a regra
+                    // marcaria 0% de conformidade sempre que achasse algo.
+                    ctx.Evaluated(1);
+
                     if (seen.TryGetValue(name, out var anterior) && anterior == literal)
                     {
-                        ctx.Evaluated(1);
-
                         if (reported.Add(name))
                         {
                             ctx.Report(
