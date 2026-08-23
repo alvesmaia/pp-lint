@@ -164,3 +164,28 @@ apóstrofo — `body('List_to-do''s_by_folder_(V2)')`.
 
 Nome de exibição não é cobrado: o texto que o usuário lê continua acentuado. O que a regra
 governa é o identificador.
+
+## NM de colunas — NM020, NM021, NM023
+
+Nomenclatura de coluna de tabela, o pedaço do pedido original que faltava. A NM040 passou
+a julgar também nomes de coluna e de tabela, o que cobre o terreno da NM022 sem criar um
+segundo ID para o mesmo defeito.
+
+O extractor já lia `Entities/*/Entity.xml` desde a Fase 1 e nunca tinha visto artefato de
+verdade. Ver um encontrou três defeitos:
+
+1. **Nome lógico e de esquema eram o mesmo valor.** No Dataverse o lógico é sempre a versão
+   minúscula do de esquema, e é por ele que fórmulas e fluxos referenciam a tabela.
+2. **`Other/Solution.xml` não era lido.** É onde o `pac solution unpack` grava o manifesto,
+   e sem ele a NM020 não tem publisher com que comparar.
+3. **`customizations.xml` não era lido.** No `.zip` exportado — o caminho que o usuário
+   aciona — as tabelas vivem lá dentro, e não em `Entities/`. Os dois formatos agora
+   produzem achados idênticos, verificado por teste.
+
+E ensinou o discriminador que evita o falso positivo mais provável: `gmx_amount_Base` vem
+com `IsCustomField=1` **apesar de o Dataverse tê-la gerado** para o par de moeda. Filtrar
+só por coluna customizada acusaria toda coluna `_Base` do esquema. O que a denuncia é
+`<CalculationOf>`, que nomeia a coluna da qual ela deriva.
+
+Os dois achados na solução real — `crfbf_ExpenseReport` com prefixo de outro publisher, e
+`gmx_ExpenseReportID2` exibida como "Expense Report ID" — foram conferidos no Entity.xml.
