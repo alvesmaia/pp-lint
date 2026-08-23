@@ -90,6 +90,13 @@ apps de tamanhos diferentes.
 | PF116 | `Filter(fonte, true)` — filtro sem efeito | Aviso |
 | PF117 | `CountRows(x) > 0` em vez de `!IsEmpty(x)` | Aviso |
 | PF118 | Concatenação com texto vazio | Informação |
+| PF120 | `UpdateContext` no `App.OnStart`, que não define nada | **Erro** |
+| PF121 | Referência a controle de outra tela | Aviso |
+| PF122 | `ForAll` que escreve item a item | Aviso |
+| PF123 | Expressão aninhada acima do limite | Aviso |
+| PF124 | Mesma cor literal em cinco ou mais lugares | Informação |
+| PF125 | Texto literal num app que já traduz | Informação |
+| PF130 | A fórmula não compila | **Erro** |
 | FL201 | Variável de fluxo inicializada e nunca lida | Aviso |
 | FL202 | Variável usada antes de ser inicializada | Erro |
 | FL203 | Saída de ação computacional nunca consumida | Aviso |

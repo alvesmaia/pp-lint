@@ -108,7 +108,19 @@ public class RuleCatalogContractTests
         // As regras de código morto precisam do que examinar: uma segunda tela
         // (alvo da DUP304), um controle escondido (DUP303) e uma fonte externa
         // declarada (DUP305). Sem isso as três terminam sem ter visto alvo algum.
-        app.Screens.Add(Screen("scrDetalhe", Ctl("lblOculto", "label", ("Visible", "false"))));
+        // A segunda tela também dá alvo às regras de qualidade de expressão: um
+        // ForAll, uma cor repetida, um texto literal e uma leitura entre telas.
+        app.Screens.Add(Screen(
+            "scrDetalhe",
+            Ctl("lblOculto", "label", ("Visible", "false")),
+            Ctl("lblTitulo", "label", ("Text", "\"Detalhe do pedido\"")),
+            Ctl("lblEco", "label", ("Width", "btnSalvar.Width")),
+            Ctl("btnGravar", "button", ("OnSelect", "ForAll(colItens, Collect(Pedidos, { Id: Value }))")),
+            Ctl("recFundo", "rectangle", ("Fill2", "RGBA(0, 120, 212, 1)")),
+            Ctl("recBorda", "rectangle", ("Fill2", "RGBA(0, 120, 212, 1)"))));
+
+        // A PF125 só fala em app que já traduz; sem esta fonte ela nunca teria alvo.
+        app.DataSources.Add(new DataSource("Translations", "ServiceInfo", []));
         app.DataSources.Add(new DataSource("Pedidos", "ServiceInfo", []));
 
         // As regras de inicialização e de delegação precisam de um OnStart que
