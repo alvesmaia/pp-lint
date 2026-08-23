@@ -70,7 +70,17 @@ jobs:
           mkdir -p artifacts
           cp "publish/${{ matrix.binary }}" "artifacts/${{ matrix.asset }}"
           cd artifacts
-          shasum -a 256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+
+          # O Git Bash do Windows traz sha256sum e não traz shasum; o macOS traz
+          # shasum e não traz sha256sum. Escolher em tempo de execução é o que
+          # faz o mesmo passo servir às três plataformas.
+          if command -v sha256sum > /dev/null; then
+            sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+          else
+            shasum -a 256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+          fi
+
+          cat "${{ matrix.asset }}.sha256"
 
       - name: Verificar que o catálogo sobreviveu à publicação
         shell: bash
