@@ -283,3 +283,48 @@ public class RealArtifactTests
             d => d.RuleId == "DUP305" && d.Message.Contains("Office365Users"));
     }
 }
+
+/// <summary>
+/// O objeto App não é uma tela. Ele traz OnStart, OnError e StartScreen, e no
+/// .msapp real vive num Controls/*.json com o template 'appinfo', ao lado das
+/// telas de verdade.
+/// </summary>
+public class AppObjectTests
+{
+    private static string RealMsapp => Path.GetFullPath(Path.Combine(
+        AppContext.BaseDirectory, "..", "..", "..", "..", "fixtures", "chess-real.msapp"));
+
+    [Fact]
+    public void OnStartIsReachableAsAnAppProperty()
+    {
+        // O extractor procurava OnStart em Properties.json, que este .msapp não
+        // tem: as fórmulas do App vêm como regras de um controle 'appinfo'.
+        var app = ProjectLoader.Load(RealMsapp).Apps[0];
+
+        var onStart = app.AppProperties.SingleOrDefault(p => p.Name == "OnStart");
+
+        Assert.NotNull(onStart);
+        Assert.True(onStart!.Script.Length > 1000, $"OnStart veio com {onStart.Script.Length} caracteres");
+    }
+
+    [Fact]
+    public void AppIsNotCountedAsAScreen()
+    {
+        // Enquanto ele contava como tela, toda regra que percorre telas o
+        // examinava — e as variáveis do OnStart ficavam escopadas numa tela
+        // chamada 'App', que não existe.
+        var app = ProjectLoader.Load(RealMsapp).Apps[0];
+
+        Assert.DoesNotContain(app.Screens, s => s.Name == "App");
+        Assert.All(app.Screens, s => Assert.Equal("screen", s.TemplateName));
+    }
+
+    [Fact]
+    public void RealScreensAreStillThere()
+    {
+        var app = ProjectLoader.Load(RealMsapp).Apps[0];
+
+        Assert.Equal(11, app.Screens.Count);
+        Assert.Contains(app.Screens, s => s.Name == "Home Screen");
+    }
+}

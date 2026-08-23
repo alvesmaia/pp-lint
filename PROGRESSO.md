@@ -219,3 +219,45 @@ como identificador em lugar nenhum. O índice de referências passou a olhar ali
 Cinco achados no app real, todos conferidos: `Asset Screen` inalcançável, `AudioGoose` e
 `TimerRefreshServer` invisíveis e citados uma única vez (a própria declaração), e duas
 fórmulas repetidas três vezes.
+
+## Catálogo completo — 60 regras
+
+As últimas famílias entraram juntas: PERF (delegação e custo de abertura), SEC (segredos,
+endereços de ambiente, conectores de saída), PF120-PF130 (escopo, escrita em laço,
+aninhamento, tema, tradução, fórmula que não compila), SOL (publisher, coluna inexistente,
+solução managed) e as NM e FL que faltavam.
+
+### O defeito que as regras de OnStart destravaram
+
+O objeto App vinha num Controls/*.json com template "appinfo" e era classificado como
+**tela**. AppProperties ficava vazio — o OnStart de 19.815 caracteres do app real nunca
+chegava lá — e as variáveis dele ficavam escopadas numa tela chamada "App", que não existe.
+Nenhuma regra tinha lido o maior bloco de código do artefato.
+
+### Falsos positivos que só o artefato real revelaria
+
+**PERF402 acusou 33 chamadas de rede** num OnStart que trabalha quase todo sobre coleções e
+tabelas literais. ClearCollect(colA, [1,2,3]) não espera por nada, e o conselho "paralelize"
+seria falso. As três regras PERF passaram a contar só o que toca fonte externa.
+
+**PF124 e PF125 nasceram com limiar e gatilho de contexto.** A sondagem mostrou a mesma cor
+usada 57 vezes num app com ilustração vetorial; uma regra ingênua produziria centenas de
+infos que enterrariam todo o resto. A PF124 só fala a partir de cinco usos da mesma cor; a
+PF125 só fala em app que já tem tabela de tradução, porque em app sem tradução o literal é a
+escolha certa.
+
+**PF121 exclui telas do alvo.** Ler a dimensão de outra tela é referência de layout e
+resolve sem ela estar carregada — o que não resolve é o valor guardado num controle dela.
+
+### Regras que ficaram de fora, com motivo
+
+| Regra | Por quê |
+|---|---|
+| DUP306 | O IR não extrai conexões, e o conector já chega pela DUP305 |
+| FL212 | O formato de ação desabilitada não apareceu em artefato real |
+| FL220, FL221 | Exigem tabela de operationId por conector, que é fase própria |
+| FL224 | Coberta por FL222 e FL223 sem acrescentar sinal novo |
+| NM014 | O IR não distingue propriedade customizada de embutida |
+| NM022 | Coberta pela NM040, que julga o nome de toda coluna criada |
+
+Adivinhar formato que não se viu foi o erro que este projeto evitou desde a Fase FL.

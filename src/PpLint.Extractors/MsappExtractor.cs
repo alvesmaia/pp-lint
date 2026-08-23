@@ -30,9 +30,18 @@ public static class MsappExtractor
 
         foreach (var entry in ControlEntries(source))
         {
-            var screen = TryReadScreen(source, artifactPath, entry, entryPrefix);
-            if (screen is not null)
-                app.Screens.Add(screen);
+            var control = TryReadScreen(source, artifactPath, entry, entryPrefix);
+            if (control is null)
+                continue;
+
+            // O objeto App vem num Controls/*.json como qualquer tela, mas não é
+            // uma: ele carrega OnStart, OnError e StartScreen. Tratá-lo como tela
+            // fazia toda regra que percorre telas examiná-lo, e escopava as
+            // variáveis do OnStart numa tela chamada 'App' que não existe.
+            if (IsAppObject(control))
+                app.AppProperties.AddRange(control.Properties);
+            else
+                app.Screens.Add(control);
         }
 
         ReadAppProperties(source, artifactPath, app, entryPrefix);
@@ -40,6 +49,10 @@ public static class MsappExtractor
 
         return app;
     }
+
+    /// <summary>O contêiner das fórmulas do App, e não uma tela.</summary>
+    private static bool IsAppObject(Control control) =>
+        string.Equals(control.TemplateName, "appinfo", StringComparison.OrdinalIgnoreCase);
 
     private static IEnumerable<string> ControlEntries(IArtifactSource source) =>
         source.Entries

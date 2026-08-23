@@ -108,8 +108,28 @@ public class RuleCatalogContractTests
         // As regras de código morto precisam do que examinar: uma segunda tela
         // (alvo da DUP304), um controle escondido (DUP303) e uma fonte externa
         // declarada (DUP305). Sem isso as três terminam sem ter visto alvo algum.
-        app.Screens.Add(Screen("scrDetalhe", Ctl("lblOculto", "label", ("Visible", "false"))));
+        // A segunda tela também dá alvo às regras de qualidade de expressão: um
+        // ForAll, uma cor repetida, um texto literal e uma leitura entre telas.
+        app.Screens.Add(Screen(
+            "scrDetalhe",
+            Ctl("lblOculto", "label", ("Visible", "false")),
+            Ctl("lblTitulo", "label", ("Text", "\"Detalhe do pedido\"")),
+            Ctl("lblEco", "label", ("Width", "btnSalvar.Width")),
+            Ctl("btnGravar", "button", ("OnSelect", "ForAll(colItens, Collect(Pedidos, { Id: Value }))")),
+            Ctl("recFundo", "rectangle", ("Fill2", "RGBA(0, 120, 212, 1)")),
+            Ctl("recBorda", "rectangle", ("Fill2", "RGBA(0, 120, 212, 1)")),
+            Ctl("cmpTopo", "component", ("Text", "\"Topo\""))));
+
+        // A PF125 só fala em app que já traduz; sem esta fonte ela nunca teria alvo.
+        app.DataSources.Add(new DataSource("Translations", "ServiceInfo", []));
         app.DataSources.Add(new DataSource("Pedidos", "ServiceInfo", []));
+
+        // As regras de inicialização e de delegação precisam de um OnStart que
+        // toque a fonte externa, senão terminam sem ter visto alvo algum.
+        app.AppProperties.Add(new PowerFxProperty(
+            "OnStart",
+            "ClearCollect(colPedidos, Filter(Pedidos, Ativo))",
+            new SourceLocation("teste.msapp", "Properties.json", "App.OnStart", 0, 0)));
 
         var flow = new CloudFlow
         {
@@ -148,11 +168,56 @@ public class RuleCatalogContractTests
         };
         laco.RunAfterStates.Add("Succeeded");
 
+        // Um ramo de erro dá alvo à FL211; a expressão que cita coluna, à SOL602.
+        var avisa = new FlowAction
+        {
+            Name = "Avisar",
+            Type = "OpenApiConnection",
+            Location = new SourceLocation("teste.zip", "Workflows/f.json", "Avisar", 0, 0),
+        };
+        avisa.RunAfter.Add("Compor");
+        avisa.RunAfterStates.Add("Failed");
+        avisa.Expressions.Add("@{gmx_pedido?['gmx_valor']}");
+
         flow.Actions.Add(inicializa);
         flow.Actions.Add(compoe);
         flow.Actions.Add(laco);
+        flow.Actions.Add(avisa);
         flow.Variables.Add(new FlowVariable("varX", "integer",
             new SourceLocation("teste.zip", "Workflows/f.json", "Inicializar", 0, 0)));
+
+        // A FL231 só examina gatilho de evento: com recorrência ela desiste, e
+        // sem um segundo fluxo ela terminaria sem alvo nenhum.
+        var porEvento = new CloudFlow
+        {
+            Name = "Ao criar item",
+            Description = "dispara quando um item é criado",
+            Location = new SourceLocation("teste.zip", "Workflows/g.json", "Ao criar item", 0, 0),
+        };
+        porEvento.Trigger = new FlowTrigger(
+            "Quando",
+            "OpenApiConnection",
+            new SourceLocation("teste.zip", "Workflows/g.json", "Quando", 0, 0));
+
+        var gravaLogo = new FlowAction
+        {
+            Name = "Gravar",
+            Type = "OpenApiConnection",
+            Location = new SourceLocation("teste.zip", "Workflows/g.json", "Gravar", 0, 0),
+        };
+        gravaLogo.RunAfterStates.Add("Succeeded");
+
+        var avisaFalha = new FlowAction
+        {
+            Name = "AvisarFalha",
+            Type = "OpenApiConnection",
+            Location = new SourceLocation("teste.zip", "Workflows/g.json", "AvisarFalha", 0, 0),
+        };
+        avisaFalha.RunAfter.Add("Gravar");
+        avisaFalha.RunAfterStates.Add("Failed");
+
+        porEvento.Actions.Add(gravaLogo);
+        porEvento.Actions.Add(avisaFalha);
 
 
         // Uma tabela com coluna criada por alguém, senão as regras de coluna não
@@ -172,6 +237,7 @@ public class RuleCatalogContractTests
 
         var project = ProjectWith(app);
         project.Flows.Add(flow);
+        project.Flows.Add(porEvento);
         project.Tables.Add(tabela);
         project.Solution = new SolutionInfo("Teste", "gmx", "1.0.0.0", Managed: false);
 
