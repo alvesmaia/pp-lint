@@ -261,3 +261,24 @@ resolve sem ela estar carregada — o que não resolve é o valor guardado num c
 | NM022 | Coberta pela NM040, que julga o nome de toda coluna criada |
 
 Adivinhar formato que não se viu foi o erro que este projeto evitou desde a Fase FL.
+
+## Release 0.1.0 — pública
+
+Repositório aberto e binários publicados para win-x64, linux-x64, osx-arm64 e osx-x64, com
+checksum ao lado de cada um. Baixei o binário do Windows como um usuário faria: checksum
+confere, a versão vem da tag, o catálogo tem 60 regras e os três formatos de saída
+funcionam.
+
+Dois defeitos no workflow apareceram só ao publicar de verdade:
+
+**O checksum quebrava no Windows.** O passo usava `shasum`, que o Git Bash do Windows não
+tem — ele traz `sha256sum`; o macOS é o contrário. O job saía com código 127 depois de
+compilar e testar tudo, justamente na plataforma da maioria de quem usa Power Platform.
+
+**O runner macos-13 foi descontinuado** e a fila dele passou de vinte minutos, prendendo a
+release inteira, que espera pelos quatro builds. O binário Intel passou a ser compilado a
+partir do host arm64; o que se perde é rodá-lo no runner para conferir, e o campo
+`executavel` da matriz diz explicitamente onde as verificações valem.
+
+A verificação pós-publish também ficou mais firme no caminho: o limiar era "pelo menos 5
+regras", que passaria mesmo se o trimming removesse 55 das 60.
