@@ -189,3 +189,33 @@ só por coluna customizada acusaria toda coluna `_Base` do esquema. O que a denu
 
 Os dois achados na solução real — `crfbf_ExpenseReport` com prefixo de outro publisher, e
 `gmx_ExpenseReportID2` exibida como "Expense Report ID" — foram conferidos no Entity.xml.
+
+## DUP — duplicação e código morto
+
+DUP301, DUP303, DUP304 e DUP305. É o outro item explícito do pedido original — "duplicação
+de códigos".
+
+**DUP306 fica de fora.** Seria "conexão declarada e nunca usada", mas o IR não extrai
+conexões, o app real não traz `Connections.json`, e a informação de conector já chega pela
+DUP305 via `DataSources`. Implementá-la agora seria adivinhar um formato.
+
+Sondei o app real antes de escrever qualquer regra, e a sondagem mudou o desenho das quatro:
+
+1. **`Size` e `Orientation` aparecem 8× cada** — o Studio as escreve em toda tela criada.
+   Uma DUP301 ingênua acusaria isso primeiro, e o usuário desligaria a regra.
+2. **Sub-expressão é ruído, fórmula inteira é sinal.** `Min(viewBox.Width, viewBox.Height)`
+   aparece 66 vezes dentro de fórmulas diferentes de um app com SVG. Comparar sub-árvores
+   enterraria o achado verdadeiro sob dezenas de falsos.
+3. **`App` aparece na lista de telas** e nunca é alvo de `Navigate` — falso positivo
+   garantido se a DUP304 não pulasse a primeira entrada.
+4. **22 das 26 "data sources" são coleções.** A DUP305 filtra por tipo; sem isso repetiria
+   o bug que a PF103 já teve.
+
+E um falso positivo que só o artefato real revelaria: a DUP305 acusou `Office365Users`, um
+conector usado em quatro telas. Numa chamada como `Office365Users.UserPhotoV2(x)`, o parser
+guarda o conector **no namespace da função**, não como nó da árvore — o nome não aparece
+como identificador em lugar nenhum. O índice de referências passou a olhar ali também.
+
+Cinco achados no app real, todos conferidos: `Asset Screen` inalcançável, `AudioGoose` e
+`TimerRefreshServer` invisíveis e citados uma única vez (a própria declaração), e duas
+fórmulas repetidas três vezes.

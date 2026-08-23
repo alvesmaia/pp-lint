@@ -250,4 +250,36 @@ public class RealArtifactTests
         Assert.True(achados.Count >= 10, $"esperava as telas com espaço, veio {achados.Count}");
         Assert.All(achados, d => Assert.Contains("espaço", d.Message));
     }
+    [Fact]
+    public void RealMsapp_FindsDeadCodeAndDuplication()
+    {
+        // Cinco achados conferidos no arquivo: a tela Asset Screen que nenhum
+        // Navigate alcança, dois controles invisíveis cujo nome aparece uma vez
+        // só — a própria declaração — e duas fórmulas repetidas três vezes.
+        var project = ProjectLoader.Load(RealMsapp);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        var ids = result.Diagnostics.Select(d => d.RuleId).ToList();
+
+        Assert.Contains("DUP301", ids);
+        Assert.Contains("DUP303", ids);
+        Assert.Contains("DUP304", ids);
+    }
+
+    [Fact]
+    public void RealMsapp_DoesNotFlagConnectorUsedOnlyThroughFunctions()
+    {
+        // Office365Users é usado em quatro telas, sempre como
+        // Office365Users.UserPhotoV2(...). O nome vive no namespace da função e
+        // não aparece como identificador solto: uma primeira versão da DUP305 o
+        // acusou de não usado.
+        var project = ProjectLoader.Load(RealMsapp);
+        var result = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly)
+            .Run(project, PpLint.Core.PpLintConfig.Default);
+
+        Assert.DoesNotContain(
+            result.Diagnostics,
+            d => d.RuleId == "DUP305" && d.Message.Contains("Office365Users"));
+    }
 }
