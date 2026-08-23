@@ -18,18 +18,26 @@ jobs:
             rid: win-x64
             asset: pp-lint-win-x64.exe
             binary: pp-lint.exe
+            executavel: true
           - os: ubuntu-latest
             rid: linux-x64
             asset: pp-lint-linux-x64
             binary: pp-lint
+            executavel: true
           - os: macos-latest
             rid: osx-arm64
             asset: pp-lint-osx-arm64
             binary: pp-lint
-          - os: macos-13
+            executavel: true
+          # Mac Intel. O runner macos-13 foi descontinuado e a fila dele passa de
+          # vinte minutos, então o binário é compilado a partir do host arm64 —
+          # o .NET publica para outra arquitetura sem dificuldade. O que se perde
+          # é rodá-lo aqui para conferir, e por isso 'executavel' é falso.
+          - os: macos-latest
             rid: osx-x64
             asset: pp-lint-osx-x64
             binary: pp-lint
+            executavel: false
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -83,6 +91,7 @@ jobs:
           cat "${{ matrix.asset }}.sha256"
 
       - name: Verificar que o catálogo sobreviveu à publicação
+        if: matrix.executavel
         shell: bash
         run: |
           # As regras são descobertas por reflexão; se o publish removesse os
@@ -95,6 +104,7 @@ jobs:
           test "$count" -ge 60
 
       - name: Verificar que a documentação embarcada sobreviveu
+        if: matrix.executavel
         shell: bash
         run: |
           # Os documentos de regra viajam como recurso embarcado. Se o publish
