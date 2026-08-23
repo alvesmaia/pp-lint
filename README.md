@@ -98,6 +98,10 @@ apps de tamanhos diferentes.
 | FL230 | Recorrência mais frequente que o limiar (15 min) | Aviso |
 | FL240 | Fluxo sem descrição | Informação |
 | FL241 | `Executar após` aponta para ação inexistente | Erro |
+| DUP301 | Fórmula idêntica repetida três ou mais vezes | Aviso |
+| DUP303 | Controle invisível que nenhuma fórmula referencia | Aviso |
+| DUP304 | Tela para a qual nenhum `Navigate` aponta | Aviso |
+| DUP305 | Fonte de dados declarada e nunca consultada | Aviso |
 
 `pp-lint rules` lista o catálogo instalado.
 

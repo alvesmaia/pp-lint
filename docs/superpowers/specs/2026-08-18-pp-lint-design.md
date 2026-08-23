@@ -230,7 +230,7 @@ convenção é hardcoded em C#.
 | DUP303 | Controle nunca referenciado e invisível — código morto | Warn |
 | DUP304 | Tela inalcançável (nenhum `Navigate` aponta para ela) | Warn |
 | DUP305 | Data source declarada e nunca usada | Warn |
-| DUP306 | Conexão declarada e nunca usada | Warn |
+| DUP306 | Conexão declarada e nunca usada — **adiada**: o IR não extrai conexões, e o conector já chega pela DUP305 | — |
 | PERF401 | Função não delegável sobre data source delegável | Error |
 | PERF402 | `App.OnStart` com chamadas sequenciais que caberiam em `Concurrent` | Warn |
 | PERF403 | `App.OnStart` acima do orçamento de operações | Warn |

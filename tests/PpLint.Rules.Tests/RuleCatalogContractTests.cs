@@ -105,6 +105,12 @@ public class RuleCatalogContractTests
                  + "Set(varC, CountRows(Filter(colItens, varTotal > 0)) > 0); "
                  + "Set(varD, Text(varTotal) & \"x\")"))));
 
+        // As regras de código morto precisam do que examinar: uma segunda tela
+        // (alvo da DUP304), um controle escondido (DUP303) e uma fonte externa
+        // declarada (DUP305). Sem isso as três terminam sem ter visto alvo algum.
+        app.Screens.Add(Screen("scrDetalhe", Ctl("lblOculto", "label", ("Visible", "false"))));
+        app.DataSources.Add(new DataSource("Pedidos", "ServiceInfo", []));
+
         var flow = new CloudFlow
         {
             Name = "F",
