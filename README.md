@@ -102,6 +102,9 @@ apps de tamanhos diferentes.
 | DUP303 | Controle invisível que nenhuma fórmula referencia | Aviso |
 | DUP304 | Tela para a qual nenhum `Navigate` aponta | Aviso |
 | DUP305 | Fonte de dados declarada e nunca consultada | Aviso |
+| PERF401 | Função não delegável sobre fonte de dados externa | **Erro** |
+| PERF402 | Chamadas de rede em sequência no `OnStart` | Aviso |
+| PERF403 | `OnStart` acima do orçamento de operações | Aviso |
 
 `pp-lint rules` lista o catálogo instalado.
 

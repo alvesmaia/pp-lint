@@ -111,6 +111,13 @@ public class RuleCatalogContractTests
         app.Screens.Add(Screen("scrDetalhe", Ctl("lblOculto", "label", ("Visible", "false"))));
         app.DataSources.Add(new DataSource("Pedidos", "ServiceInfo", []));
 
+        // As regras de inicialização e de delegação precisam de um OnStart que
+        // toque a fonte externa, senão terminam sem ter visto alvo algum.
+        app.AppProperties.Add(new PowerFxProperty(
+            "OnStart",
+            "ClearCollect(colPedidos, Filter(Pedidos, Ativo))",
+            new SourceLocation("teste.msapp", "Properties.json", "App.OnStart", 0, 0)));
+
         var flow = new CloudFlow
         {
             Name = "F",
