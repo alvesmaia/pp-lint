@@ -1,12 +1,32 @@
 # pp-lint
 
-Linter estático para artefatos do Power Platform, inspirado no [ruff](https://docs.astral.sh/ruff/):
-um binário único, sem dependência de runtime, que analisa uma solução exportada e emite
-um relatório de conformidade.
+Linter estático para artefatos do Power Platform, na ideia do [ruff](https://docs.astral.sh/ruff/):
+um binário único, sem runtime para instalar, que lê a solução exportada e devolve um
+relatório de conformidade.
 
-> **Estado atual: Fase 1.** O núcleo está funcionando de ponta a ponta com 5 regras
-> piloto. O catálogo completo (~70 regras) chega nas fases seguintes — veja
-> `docs/superpowers/specs/2026-08-18-pp-lint-design.md`.
+**60 regras**, análise somente-leitura, saída em texto, JSON ou SARIF.
+
+## Instalação
+
+Baixe o binário da [última release](https://github.com/alvesmaia/pp-lint/releases/latest)
+para o seu sistema, torne-o executável e rode. Não há runtime para instalar.
+
+```bash
+# Linux e macOS
+curl -L -o pp-lint https://github.com/alvesmaia/pp-lint/releases/latest/download/pp-lint-linux-x64
+chmod +x pp-lint
+./pp-lint check MinhaSolucao.zip
+```
+
+```powershell
+# Windows
+Invoke-WebRequest -Uri https://github.com/alvesmaia/pp-lint/releases/latest/download/pp-lint-win-x64.exe -OutFile pp-lint.exe
+.pp-lint.exe check MinhaSolucao.zip
+```
+
+Cada binário vem com um arquivo `.sha256` ao lado, para conferir o download.
+
+Plataformas: `win-x64`, `linux-x64`, `osx-arm64`, `osx-x64`.
 
 ## O que ele analisa
 
