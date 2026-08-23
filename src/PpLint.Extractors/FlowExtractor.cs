@@ -47,6 +47,11 @@ public static class FlowExtractor
                         GetString(t.Value, "type") ?? string.Empty,
                         new SourceLocation(artifactPath, entryPath, t.Name, 0, 0),
                         ReadRecurrence(t.Value));
+
+                    flow.TriggerHasCondition =
+                        t.Value.TryGetProperty("conditions", out var cond)
+                        && cond.ValueKind == JsonValueKind.Array
+                        && cond.GetArrayLength() > 0;
                     break; // um fluxo tem exatamente um trigger
                 }
             }
@@ -97,6 +102,7 @@ public static class FlowExtractor
                 Name = property.Name,
                 Type = GetString(property.Value, "type") ?? string.Empty,
                 Description = GetString(property.Value, "description"),
+                ConcurrencyDegree = ReadConcurrency(property.Value),
                 Location = new SourceLocation(artifactPath, entryPath, property.Name, 0, 0),
             };
 
@@ -197,6 +203,24 @@ public static class FlowExtractor
                     CollectStrings(item, target);
                 break;
         }
+    }
+
+    /// <summary>
+    /// O grau de concorrência de um laço, em
+    /// runtimeConfiguration.concurrency.repetitions. Ausente significa
+    /// sequencial, que é o padrão do Power Automate.
+    /// </summary>
+    private static int? ReadConcurrency(JsonElement action)
+    {
+        if (!action.TryGetProperty("runtimeConfiguration", out var runtime)
+            || !runtime.TryGetProperty("concurrency", out var concurrency)
+            || !concurrency.TryGetProperty("repetitions", out var reps)
+            || reps.ValueKind != JsonValueKind.Number)
+        {
+            return null;
+        }
+
+        return reps.GetInt32();
     }
 
     /// <summary>

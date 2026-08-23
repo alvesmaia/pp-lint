@@ -71,10 +71,15 @@ apps de tamanhos diferentes.
 | NM003 | Coleção fora da convenção (`colItens`) | Aviso |
 | NM010 | Controle com nome padrão do Studio (`Button1`, `Screen1`) | Erro |
 | NM011 | Prefixo do controle não corresponde ao tipo, inclusive prefixo de **outro** tipo | Aviso |
+| NM012 | Tela fora do padrão de nome | Aviso |
+| NM013 | Componente fora do padrão de nome | Aviso |
 | NM020 | Coluna com prefixo de outro publisher que não o da solução | Erro |
 | NM021 | Nome de esquema da coluna fora de PascalCase | Aviso |
 | NM023 | Nome de exibição divergente do nome de esquema | Informação |
+| NM030 | Fluxo com o nome que o portal sugeriu | Aviso |
+| NM031 | Ação de fluxo com o nome que o designer gerou | **Erro** |
 | NM040 | Nome com acento, cedilha, espaço ou caractere especial — variáveis, controles, telas, **colunas**, tabelas, fluxos e ações | **Erro** |
+| NM041 | Nome curto demais depois do prefixo | Informação |
 | PF101 | Variável global definida e nunca lida | Aviso |
 | PF102 | Variável de contexto definida e nunca lida **na tela dela** | Aviso |
 | PF103 | Coleção criada e nunca usada | Aviso |
@@ -105,6 +110,9 @@ apps de tamanhos diferentes.
 | FL230 | Recorrência mais frequente que o limiar (15 min) | Aviso |
 | FL240 | Fluxo sem descrição | Informação |
 | FL241 | `Executar após` aponta para ação inexistente | Erro |
+| FL211 | Tratamento de falha que não relata nada | Aviso |
+| FL223 | `Aplicar a cada` com concorrência desligada | Informação |
+| FL231 | Gatilho sem condição que desiste na primeira ação | Aviso |
 | DUP301 | Fórmula idêntica repetida três ou mais vezes | Aviso |
 | DUP303 | Controle invisível que nenhuma fórmula referencia | Aviso |
 | DUP304 | Tela para a qual nenhum `Navigate` aponta | Aviso |
@@ -115,6 +123,9 @@ apps de tamanhos diferentes.
 | SEC501 | Segredo, chave ou token escrito à mão | **Erro** |
 | SEC502 | Endereço de ambiente fixo na fórmula | Aviso |
 | SEC503 | Conector que envia dados para fora da organização | Aviso |
+| SOL601 | Tabela com prefixo de outro publisher | Aviso |
+| SOL602 | Coluna inexistente no esquema da solução | **Erro** |
+| SOL603 | Solução managed sendo analisada | Informação |
 
 `pp-lint rules` lista o catálogo instalado.
 

@@ -36,6 +36,12 @@ public sealed class FlowAction
     /// </summary>
     public List<string> RunAfterStates { get; } = [];
 
+    /// <summary>
+    /// Quantos itens um laço processa ao mesmo tempo. Ausente ou 1 significa
+    /// sequencial, que é o padrão do Power Automate.
+    /// </summary>
+    public int? ConcurrencyDegree { get; init; }
+
     /// <summary>Todas as strings encontradas nos inputs da ação, onde vivem as expressões @{...}.</summary>
     public List<string> Expressions { get; } = [];
 
@@ -60,6 +66,12 @@ public sealed class CloudFlow
     public string? Description { get; init; }
 
     public FlowTrigger? Trigger { get; set; }
+
+    /// <summary>
+    /// O gatilho declara condição de disparo. Sem ela o fluxo acorda a cada
+    /// evento, mesmo quando vai desistir na primeira ação.
+    /// </summary>
+    public bool TriggerHasCondition { get; set; }
 
     public List<FlowAction> Actions { get; } = [];
 

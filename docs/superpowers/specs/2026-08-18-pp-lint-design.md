@@ -161,7 +161,7 @@ morto, `PERF` performance e delegação, `SEC` segurança, `SOL` solução/ALM.
 | NM011 | Prefixo do controle não corresponde ao template | Warn |
 | NM012 | Tela fora do padrão (`scrPascalCase`) | Warn |
 | NM013 | Componente canvas fora do padrão (`cmpPascalCase`) | Warn |
-| NM014 | Propriedade customizada de componente fora do padrão | Info |
+| NM014 | Propriedade customizada de componente fora do padrão — **adiada**: o IR não distingue propriedade customizada de embutida | — |
 | NM020 | Coluna Dataverse sem o prefixo do publisher da solução | Error |
 | NM021 | `SchemaName` de coluna Dataverse fora de PascalCase | Warn |
 | NM022 | Coluna SharePoint com espaço ou acento — **coberta pela NM040**, que julga o nome de toda coluna criada | — |
