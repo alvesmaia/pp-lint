@@ -105,6 +105,9 @@ apps de tamanhos diferentes.
 | PERF401 | Função não delegável sobre fonte de dados externa | **Erro** |
 | PERF402 | Chamadas de rede em sequência no `OnStart` | Aviso |
 | PERF403 | `OnStart` acima do orçamento de operações | Aviso |
+| SEC501 | Segredo, chave ou token escrito à mão | **Erro** |
+| SEC502 | Endereço de ambiente fixo na fórmula | Aviso |
+| SEC503 | Conector que envia dados para fora da organização | Aviso |
 
 `pp-lint rules` lista o catálogo instalado.
 
