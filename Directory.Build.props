@@ -1,9 +1,23 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      A versão do binário. O workflow de release a sobrescreve com o nome da
+      tag, para que o comando de versão do pp-lint diga a mesma coisa que a
+      página da release — senão quem baixa não tem como saber o que está rodando.
+    -->
+    <Version>0.1.0</Version>
+    <Authors>pp-lint</Authors>
+    <Product>pp-lint</Product>
+    <Description>Linter para artefatos do Power Platform: Power Apps, Power Automate e tabelas do Dataverse.</Description>
+    <RepositoryUrl>https://github.com/alvesmaia/pp-lint</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>

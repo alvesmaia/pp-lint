@@ -40,6 +40,19 @@ jobs:
       - name: Testes
         run: dotnet test --configuration Release
 
+      - name: Versão a partir da tag
+        id: versao
+        shell: bash
+        run: |
+          # A tag manda: quem baixa precisa que 'pp-lint --version' diga a mesma
+          # coisa que a página da release. Sem tag (workflow_dispatch), fica o
+          # valor do Directory.Build.props.
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "arg=-p:Version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "arg=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publicar binário
         run: >
           dotnet publish src/PpLint.Cli
@@ -48,6 +61,7 @@ jobs:
           --self-contained true
           -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
+          ${{ steps.versao.outputs.arg }}
           --output publish
 
       - name: Renomear e gerar checksum
@@ -65,7 +79,17 @@ jobs:
           # tipos, 'rules' viria vazio e o binário seria inútil na prática.
           count=$(./publish/${{ matrix.binary }} rules | wc -l)
           echo "regras no binário publicado: $count"
-          test "$count" -ge 5
+          # O número real do catálogo. Com um limiar frouxo, um publish que
+          # removesse tipos por trimming deixaria o binário rodando e inútil,
+          # e esta verificação passaria assim mesmo.
+          test "$count" -ge 60
+
+      - name: Verificar que a documentação embarcada sobreviveu
+        shell: bash
+        run: |
+          # Os documentos de regra viajam como recurso embarcado. Se o publish
+          # os perdesse, 'explain' e o campo help do SARIF sairiam vazios.
+          ./publish/${{ matrix.binary }} explain NM040 | grep -q "O que pega"
 
       - uses: actions/upload-artifact@v4
         with:
