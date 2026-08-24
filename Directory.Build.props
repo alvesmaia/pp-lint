@@ -13,7 +13,7 @@
       tag, para que o comando de versão do pp-lint diga a mesma coisa que a
       página da release — senão quem baixa não tem como saber o que está rodando.
     -->
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>pp-lint</Authors>
     <Product>pp-lint</Product>
     <Description>Linter para artefatos do Power Platform: Power Apps, Power Automate e tabelas do Dataverse.</Description>

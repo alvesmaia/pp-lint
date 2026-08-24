@@ -103,6 +103,9 @@ public static class FlowExtractor
                 Type = GetString(property.Value, "type") ?? string.Empty,
                 Description = GetString(property.Value, "description"),
                 ConcurrencyDegree = ReadConcurrency(property.Value),
+                OperationId = ReadOperationId(property.Value),
+                ParameterNames = ReadParameterNames(property.Value),
+                StaticResultEnabled = ReadStaticResultEnabled(property.Value),
                 Location = new SourceLocation(artifactPath, entryPath, property.Name, 0, 0),
             };
 
@@ -212,8 +215,8 @@ public static class FlowExtractor
     /// </summary>
     private static int? ReadConcurrency(JsonElement action)
     {
-        if (!action.TryGetProperty("runtimeConfiguration", out var runtime)
-            || !runtime.TryGetProperty("concurrency", out var concurrency)
+        if (!TryObject(action, "runtimeConfiguration", out var runtime)
+            || !TryObject(runtime, "concurrency", out var concurrency)
             || !concurrency.TryGetProperty("repetitions", out var reps)
             || reps.ValueKind != JsonValueKind.Number)
         {
@@ -233,6 +236,67 @@ public static class FlowExtractor
         && props.ValueKind == JsonValueKind.Object
             ? GetString(props, "description")
             : null;
+
+    /// <summary>
+    /// A operação do conector, em inputs.host.operationId. O campo 'type' de
+    /// uma chamada de conector diz apenas "OpenApiConnection", e é aqui que se
+    /// descobre se ela lista registros ou envia e-mail.
+    /// </summary>
+    private static string? ReadOperationId(JsonElement action)
+    {
+        // 'inputs' nem sempre é objeto: num Compose ele é o valor composto, que
+        // pode ser texto, número ou array. Perguntar por uma propriedade ali
+        // dentro lança, e a exceção derrubava a análise do artefato inteiro.
+        if (!TryObject(action, "inputs", out var inputs) || !TryObject(inputs, "host", out var host))
+            return null;
+
+        return GetString(host, "operationId");
+    }
+
+    /// <summary>A propriedade existe e é um objeto?</summary>
+    private static bool TryObject(JsonElement parent, string nome, out JsonElement valor)
+    {
+        valor = default;
+
+        if (parent.ValueKind != JsonValueKind.Object
+            || !parent.TryGetProperty(nome, out var v)
+            || v.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        valor = v;
+        return true;
+    }
+
+    /// <summary>
+    /// Só os nomes dos parâmetros. O valor costuma trazer expressão do usuário,
+    /// e quem consulta isto quer saber o que foi informado — se há '$filter' —
+    /// e não o conteúdo dele.
+    /// </summary>
+    private static IReadOnlyList<string> ReadParameterNames(JsonElement action)
+    {
+        if (!TryObject(action, "inputs", out var inputs)
+            || !TryObject(inputs, "parameters", out var parameters))
+        {
+            return [];
+        }
+
+        return parameters.EnumerateObject().Select(p => p.Name).ToList();
+    }
+
+    /// <summary>
+    /// Resultado estático ligado é o que o designer chama de desabilitar a
+    /// ação: ela devolve saída simulada sem executar. A forma vem da
+    /// documentação da linguagem de definição de fluxo.
+    /// </summary>
+    private static bool ReadStaticResultEnabled(JsonElement action) =>
+        TryObject(action, "runtimeConfiguration", out var runtime)
+        && TryObject(runtime, "staticResult", out var estatico)
+        && string.Equals(
+            GetString(estatico, "staticResultOptions"),
+            "Enabled",
+            StringComparison.OrdinalIgnoreCase);
 
     private static FlowRecurrence? ReadRecurrence(JsonElement trigger)
     {

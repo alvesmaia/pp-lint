@@ -74,3 +74,19 @@ elementos `<Entity>` são os originais, byte a byte; só a embalagem muda.
 Existe porque exportar do portal é o caminho que o usuário aciona, e os dois formatos
 precisam produzir os mesmos achados — se divergirem, um dos dois caminhos está lendo
 errado. É o que o teste `FindsTheSameIssuesAsTheUnpackedLayout` verifica.
+
+## solucao-fluxos/
+
+Três cloud flows reais, com 56 ações entre eles. Origem:
+[pnp/powerplatform-samples](https://github.com/pnp/powerplatform-samples), licença MIT —
+amostras `ai-driven-expense-report-processing`, e duas outras com consultas ao SharePoint e
+ao Dataverse. O `solution.xml` foi escrito para embalá-los; os arquivos de fluxo são os
+originais.
+
+Existe porque as regras FL220, FL221, FL224 e FL212 dependiam de formatos que nenhum
+artefato anterior mostrava: operação de listagem com `$filter` e `$top`, e chamada de
+conector dentro de laço.
+
+O que este artefato ensinou: ao ler `inputs.host.operationId`, o extractor quebrava com
+exceção não tratada. Num `Compose`, `inputs` não é objeto — é o valor composto, que pode
+ser texto, número ou array. Um fixture sintético teria usado sempre a forma de conector.

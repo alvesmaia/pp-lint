@@ -101,7 +101,7 @@ jobs:
           # O número real do catálogo. Com um limiar frouxo, um publish que
           # removesse tipos por trimming deixaria o binário rodando e inútil,
           # e esta verificação passaria assim mesmo.
-          test "$count" -ge 60
+          test "$count" -ge 66
 
       - name: Verificar que a documentação embarcada sobreviveu
         if: matrix.executavel

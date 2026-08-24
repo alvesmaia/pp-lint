@@ -124,6 +124,18 @@ public class RuleCatalogContractTests
         app.DataSources.Add(new DataSource("Translations", "ServiceInfo", []));
         app.DataSources.Add(new DataSource("Pedidos", "ServiceInfo", []));
 
+        // A DUP306 olha conexões, que são coisa diferente de fonte de dados.
+        app.Connections.Add(new AppConnection("c1", "Dataverse", "shared_cds", 1, 0));
+
+        // E a NM014 olha propriedade customizada de componente.
+        var componente = new CanvasComponent
+        {
+            Name = "cmpCabecalho",
+            Location = new SourceLocation("teste.msapp", "Components/1.json", "cmpCabecalho", 0, 0),
+        };
+        componente.CustomProperties.Add(new ComponentProperty("Titulo", "Titulo", "String"));
+        app.Components.Add(componente);
+
         // As regras de inicialização e de delegação precisam de um OnStart que
         // toque a fonte externa, senão terminam sem ter visto alvo algum.
         app.AppProperties.Add(new PowerFxProperty(
@@ -215,6 +227,19 @@ public class RuleCatalogContractTests
         };
         avisaFalha.RunAfter.Add("Gravar");
         avisaFalha.RunAfterStates.Add("Failed");
+
+        // Uma consulta dá alvo à FL220 e à FL221; sem operationId reconhecido
+        // as duas terminam sem ter visto nada.
+        var consulta = new FlowAction
+        {
+            Name = "Listar_pedidos",
+            Type = "OpenApiConnection",
+            OperationId = "GetItems",
+            ParameterNames = ["dataset", "table", "$filter", "$top"],
+            Location = new SourceLocation("teste.zip", "Workflows/g.json", "Listar_pedidos", 0, 0),
+        };
+        consulta.RunAfterStates.Add("Succeeded");
+        porEvento.Actions.Add(consulta);
 
         porEvento.Actions.Add(gravaLogo);
         porEvento.Actions.Add(avisaFalha);

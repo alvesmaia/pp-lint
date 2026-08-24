@@ -2,6 +2,7 @@ using System.Diagnostics;
 using PpLint.Core;
 using PpLint.Core.Configuration;
 using PpLint.Core.Model;
+using PpLint.Core.Baseline;
 using PpLint.Core.Reporting;
 using PpLint.Rules;
 using PpLint.Core.Rules;
@@ -83,6 +84,9 @@ public static class Program
             case CliCommand.Check:
                 return RunCheck(options, stdout, stderr, workingDirectory ?? Directory.GetCurrentDirectory());
 
+            case CliCommand.Baseline:
+                return RunBaseline(options, stdout, stderr, workingDirectory ?? Directory.GetCurrentDirectory());
+
             default:
                 stderr.WriteLine("Comando não implementado.");
                 return 2;
@@ -143,17 +147,44 @@ public static class Program
         var run = AnalysisRun.From(resultados, stopwatch.Elapsed);
         var useColor = !options.NoColor && !Console.IsOutputRedirected;
 
+        PpLint.Core.Baseline.Baseline baseline;
+        try
+        {
+            baseline = LoadBaseline(options, workingDirectory);
+        }
+        catch (BaselineException ex)
+        {
+            stderr.WriteLine(ex.Message);
+            return 2;
+        }
+
+        // A linha de base tira o achado antigo do relatório e do código de saída,
+        // e não do índice: a conformidade continua contando o débito que existe.
+        // Fosse o contrário, bastaria gerar uma linha de base para exibir 100%.
+        var novos = baseline.Unbaselined(run.AllDiagnostics);
+        var exibidos = baseline.Entries.Count == 0 ? run : run.ShowingOnly(novos);
+
         var saida = options.Format switch
         {
-            "json" => JsonReporter.Render(run),
-            "sarif" => SarifReporter.Render(run),
-            _ => TextReporter.Render(run, useColor, options.Quiet),
+            "json" => JsonReporter.Render(exibidos),
+            "sarif" => SarifReporter.Render(exibidos),
+            "html" => HtmlReporter.Render(exibidos),
+            _ => TextReporter.Render(exibidos, useColor, options.Quiet),
         };
 
         if (options.Output is not null)
             File.WriteAllText(options.Output, saida);
         else
             stdout.Write(saida);
+
+        if (baseline.Entries.Count > 0)
+        {
+            var ocultos = run.AllDiagnostics.Count - novos.Count;
+            stderr.WriteLine(
+                $"Linha de base: {ocultos} {(ocultos == 1 ? "achado conhecido segue oculto" : "achados conhecidos seguem ocultos")}. "
+                + "Eles continuam no índice de conformidade — a linha de base impede que quebrem o "
+                + "build, não que contem.");
+        }
 
         if (!usedConfigFile && run.AllDiagnostics.Any(d => d.Category == RuleCategory.Naming))
         {
@@ -163,7 +194,86 @@ public static class Program
                 + $"Crie um {ConfigLocator.FileName} com [pp-lint] preset = \"...\" para escolher outro.");
         }
 
-        return run.AllDiagnostics.Any(d => d.Severity >= config.FailOn) ? 1 : 0;
+        // Só o que a linha de base não cobre decide o código de saída. É isso
+        // que permite ligar o linter num app legado sem parar o time.
+        return novos.Any(d => d.Severity >= config.FailOn) ? 1 : 0;
+    }
+
+    private static int RunBaseline(
+        CliOptions options, TextWriter stdout, TextWriter stderr, string workingDirectory)
+    {
+        PpLintConfig config;
+        try
+        {
+            (config, _) = LoadConfig(options, workingDirectory);
+        }
+        catch (ConfigException ex)
+        {
+            stderr.WriteLine(ex.Message);
+            return 2;
+        }
+
+        var resultados = new List<(string Path, LintResult Result)>();
+        var engine = RuleEngine.CreateDefault(typeof(DefaultControlNameRule).Assembly);
+
+        foreach (var path in options.Paths)
+        {
+            try
+            {
+                var project = ProjectLoader.Load(path);
+                resultados.Add((path, engine.Run(project, config, SuppressionIndex.Build(project))));
+            }
+            catch (ArtifactException ex)
+            {
+                stderr.WriteLine($"Erro ao ler '{path}': {ex.Message}");
+                return 2;
+            }
+            catch (ConfigException ex)
+            {
+                stderr.WriteLine(ex.Message);
+                return 2;
+            }
+        }
+
+        var run = AnalysisRun.From(resultados, TimeSpan.Zero);
+        var baseline = PpLint.Core.Baseline.Baseline.From(run);
+        var destino = options.Output
+                      ?? options.BaselinePath
+                      ?? Path.Combine(workingDirectory, PpLint.Core.Baseline.Baseline.DefaultFileName);
+
+        File.WriteAllText(destino, baseline.ToJson());
+
+        stdout.WriteLine(
+            $"Linha de base gravada em {destino}: {baseline.Total} "
+            + $"{(baseline.Total == 1 ? "achado" : "achados")} em "
+            + $"{baseline.Entries.Count} {(baseline.Entries.Count == 1 ? "posição" : "posições")}.");
+        stdout.WriteLine(
+            "As execuções seguintes só falham em achado novo. O índice de conformidade continua "
+            + "contando os antigos — a linha de base adia a dívida, não a apaga.");
+
+        return 0;
+    }
+
+    /// <summary>
+    /// A linha de base a aplicar. Sem --baseline, procura o arquivo padrão no
+    /// diretório de trabalho: quem o commitou no repositório espera que valha
+    /// sem repetir a opção em todo comando.
+    /// </summary>
+    private static PpLint.Core.Baseline.Baseline LoadBaseline(CliOptions options, string workingDirectory)
+    {
+        if (options.BaselinePath is not null)
+        {
+            if (!File.Exists(options.BaselinePath))
+                throw new BaselineException($"Linha de base não encontrada: '{options.BaselinePath}'.");
+
+            return PpLint.Core.Baseline.Baseline.Parse(File.ReadAllText(options.BaselinePath));
+        }
+
+        var padrao = Path.Combine(workingDirectory, PpLint.Core.Baseline.Baseline.DefaultFileName);
+
+        return File.Exists(padrao)
+            ? PpLint.Core.Baseline.Baseline.Parse(File.ReadAllText(padrao))
+            : PpLint.Core.Baseline.Baseline.Empty;
     }
 
     /// <summary>
@@ -243,14 +353,16 @@ public static class Program
         Uso:
           pp-lint check <caminho...> [opções]   analisa .zip, .msapp ou pasta
           pp-lint rules                         lista as regras disponíveis
+          pp-lint baseline <caminho...>         grava os achados atuais como linha de base
           pp-lint explain <ID>                  documentação de uma regra
           pp-lint --version                     mostra a versão
 
         Opções:
           --config <arquivo>                    usa este pp-lint.toml em vez de procurar
+          --baseline <arquivo>                  linha de base a aplicar (padrão: pp-lint-baseline.json)
           --select <IDs>                        só estas regras (ID ou categoria, separados por vírgula)
           --ignore <IDs>                        nunca estas regras; vence o --select
-          --format <text|json|sarif>            formato de saída (padrão: text)
+          --format <text|json|sarif|html>       formato de saída (padrão: text)
           --output <arquivo>                    grava a saída em arquivo
           --fail-on <error|warning|info>        severidade que retorna código 1 (padrão: error)
           --no-color                            desativa cores

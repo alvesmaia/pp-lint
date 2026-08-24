@@ -4,7 +4,7 @@ Linter estático para artefatos do Power Platform, na ideia do [ruff](https://do
 um binário único, sem runtime para instalar, que lê a solução exportada e devolve um
 relatório de conformidade.
 
-**60 regras**, análise somente-leitura, saída em texto, JSON ou SARIF.
+**66 regras**, análise somente-leitura, saída em texto, JSON, SARIF ou HTML.
 
 ## Instalação
 
@@ -93,6 +93,7 @@ apps de tamanhos diferentes.
 | NM011 | Prefixo do controle não corresponde ao tipo, inclusive prefixo de **outro** tipo | Aviso |
 | NM012 | Tela fora do padrão de nome | Aviso |
 | NM013 | Componente fora do padrão de nome | Aviso |
+| NM014 | Propriedade de componente fora de PascalCase | Informação |
 | NM020 | Coluna com prefixo de outro publisher que não o da solução | Erro |
 | NM021 | Nome de esquema da coluna fora de PascalCase | Aviso |
 | NM023 | Nome de exibição divergente do nome de esquema | Informação |
@@ -131,12 +132,17 @@ apps de tamanhos diferentes.
 | FL240 | Fluxo sem descrição | Informação |
 | FL241 | `Executar após` aponta para ação inexistente | Erro |
 | FL211 | Tratamento de falha que não relata nada | Aviso |
+| FL212 | Ação desabilitada (resultado estático ligado) | Aviso |
 | FL223 | `Aplicar a cada` com concorrência desligada | Informação |
+| FL220 | Consulta que lista registros sem `$filter` | Aviso |
+| FL221 | Consulta que lista registros sem `$top` | Informação |
+| FL224 | Chamada de conector dentro de laço | Aviso |
 | FL231 | Gatilho sem condição que desiste na primeira ação | Aviso |
 | DUP301 | Fórmula idêntica repetida três ou mais vezes | Aviso |
 | DUP303 | Controle invisível que nenhuma fórmula referencia | Aviso |
 | DUP304 | Tela para a qual nenhum `Navigate` aponta | Aviso |
 | DUP305 | Fonte de dados declarada e nunca consultada | Aviso |
+| DUP306 | Conexão declarada e nunca usada | Aviso |
 | PERF401 | Função não delegável sobre fonte de dados externa | **Erro** |
 | PERF402 | Chamadas de rede em sequência no `OnStart` | Aviso |
 | PERF403 | `OnStart` acima do orçamento de operações | Aviso |
@@ -152,6 +158,27 @@ apps de tamanhos diferentes.
 `pp-lint explain <ID>` imprime a documentação completa de uma regra — o que ela pega, por
 que importa e um exemplo ruim e um bom. Os mesmos textos estão em [`docs/rules/`](docs/rules/).
 
+## Adotar num app que já existe
+
+Apontar o linter para um app de anos devolve centenas de achados, e ninguém liga isso no
+CI. A linha de base resolve: ela registra o que já existia, e a partir daí só o que aparecer
+depois quebra o build.
+
+```bash
+pp-lint baseline MinhaSolucao.zip      # grava pp-lint-baseline.json
+pp-lint check MinhaSolucao.zip         # encontra o arquivo sozinho; passa
+```
+
+Commite o `pp-lint-baseline.json` no repositório. As execuções seguintes o encontram sem
+precisar da opção `--baseline`.
+
+**O índice de conformidade não melhora.** A linha de base decide o que aparece no relatório
+e o que quebra o build, nunca a nota — se melhorasse, bastaria gerá-la para exibir 100%. A
+dívida continua visível; o que ela faz é impedir que pare o time.
+
+Para atacar a dívida aos poucos, gere a linha de base de novo depois de cada limpeza: ela
+encolhe, e o que você já corrigiu não pode voltar sem alguém notar.
+
 ## Formatos de saída
 
 | Formato | Para quê |
@@ -159,6 +186,7 @@ que importa e um exemplo ruim e um bom. Os mesmos textos estão em [`docs/rules/
 | `text` | leitura no terminal, com índice de conformidade (padrão) |
 | `json` | automação; o esquema é versionado no campo `schemaVersion` |
 | `sarif` | anotação inline no pull request e aba Security do GitHub |
+| `html` | relatório autocontido, com filtro e busca, para circular fora do terminal |
 
 Com vários artefatos na mesma execução, o relatório de texto mostra o índice de cada um
 antes do geral.

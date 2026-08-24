@@ -46,6 +46,8 @@ public static class MsappExtractor
 
         ReadAppProperties(source, artifactPath, app, entryPrefix);
         ReadDataSources(source, artifactPath, app);
+        ReadConnections(source, app);
+        ReadComponents(source, artifactPath, app, entryPrefix);
 
         return app;
     }
@@ -130,6 +132,125 @@ public static class MsappExtractor
 
         return control;
     }
+
+    /// <summary>
+    /// As conexões ficam em Connections/Connections.json, num mapa de GUID para
+    /// os dados da conexão. Cada uma registra quais fontes vêm dela e quais
+    /// controles dependem dela — é por esses dois números que se sabe se
+    /// alguém a usa.
+    /// </summary>
+    /// <summary>
+    /// As definições de componente ficam em Components/*.json, e trazem um
+    /// array CustomProperties com o que alguém acrescentou ao componente. As
+    /// propriedades embutidas não aparecem ali: elas vêm do template.
+    /// </summary>
+    private static void ReadComponents(
+        IArtifactSource source, string artifactPath, CanvasApp app, string? entryPrefix)
+    {
+        var entradas = source.Entries
+            .Where(e => e.StartsWith("Components/", StringComparison.OrdinalIgnoreCase)
+                        && e.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => e, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in entradas)
+        {
+            JsonDocument doc;
+            try
+            {
+                doc = JsonDocument.Parse(source.ReadText(entry));
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+
+            using (doc)
+            {
+                var raiz = doc.RootElement.TryGetProperty("TopParent", out var top)
+                           && top.ValueKind == JsonValueKind.Object
+                    ? top
+                    : doc.RootElement;
+
+                if (raiz.ValueKind != JsonValueKind.Object)
+                    continue;
+
+                // O nome legível é o TemplateOriginalName; 'Name' costuma ser o
+                // GUID interno, que não diz nada a quem lê o achado.
+                var nome = GetString(raiz, "TemplateOriginalName")
+                           ?? GetString(raiz, "Name")
+                           ?? "(sem nome)";
+
+                var componente = new CanvasComponent
+                {
+                    Name = nome,
+                    Location = new SourceLocation(artifactPath, Qualify(entryPrefix, entry), nome, 0, 0),
+                };
+
+                if (raiz.TryGetProperty("CustomProperties", out var propriedades)
+                    && propriedades.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var p in propriedades.EnumerateArray())
+                    {
+                        var propriedade = GetString(p, "Name");
+                        if (propriedade is null)
+                            continue;
+
+                        componente.CustomProperties.Add(new ComponentProperty(
+                            propriedade,
+                            GetString(p, "DisplayName") ?? propriedade,
+                            GetString(p, "PropertyDataTypeKey") ?? string.Empty));
+                    }
+                }
+
+                app.Components.Add(componente);
+            }
+        }
+    }
+
+    private static void ReadConnections(IArtifactSource source, CanvasApp app)
+    {
+        const string entry = "Connections/Connections.json";
+        if (!source.Has(entry))
+            return;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(source.ReadText(entry));
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                return;
+
+            foreach (var item in doc.RootElement.EnumerateObject())
+            {
+                if (item.Value.ValueKind != JsonValueKind.Object)
+                    continue;
+
+                var referencia = item.Value.TryGetProperty("connectionRef", out var r)
+                                 && r.ValueKind == JsonValueKind.Object
+                    ? r
+                    : default;
+
+                app.Connections.Add(new AppConnection(
+                    Id: GetString(item.Value, "id") ?? item.Name,
+                    DisplayName: referencia.ValueKind == JsonValueKind.Object
+                        ? GetString(referencia, "displayName") ?? item.Name
+                        : item.Name,
+                    ConnectorId: referencia.ValueKind == JsonValueKind.Object
+                        ? GetString(referencia, "id") ?? string.Empty
+                        : string.Empty,
+                    DataSourceCount: Contar(item.Value, "dataSources"),
+                    DependentCount: Contar(item.Value, "dependents")));
+            }
+        }
+        catch (JsonException)
+        {
+            // Sem conexões legíveis, a regra que depende delas não avalia nada.
+        }
+    }
+
+    private static int Contar(JsonElement objeto, string propriedade) =>
+        objeto.TryGetProperty(propriedade, out var v) && v.ValueKind == JsonValueKind.Array
+            ? v.GetArrayLength()
+            : 0;
 
     private static void ReadAppProperties(
         IArtifactSource source, string artifactPath, CanvasApp app, string? entryPrefix)

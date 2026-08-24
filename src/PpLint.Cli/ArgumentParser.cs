@@ -2,7 +2,7 @@ using PpLint.Core;
 
 namespace PpLint.Cli;
 
-public enum CliCommand { Check, Explain, Rules, Version, Help }
+public enum CliCommand { Check, Explain, Rules, Version, Help, Baseline }
 
 public sealed record CliOptions(
     CliCommand Command,
@@ -15,7 +15,8 @@ public sealed record CliOptions(
     string? ExplainRuleId,
     IReadOnlyList<string> Select,
     IReadOnlyList<string> Ignore,
-    string? ConfigPath);
+    string? ConfigPath,
+    string? BaselinePath);
 
 public sealed record ParseResult<T>(bool IsSuccess, T? Value, string? Error)
 {
@@ -25,7 +26,7 @@ public sealed record ParseResult<T>(bool IsSuccess, T? Value, string? Error)
 
 public static class ArgumentParser
 {
-    private static readonly string[] ValidFormats = ["text", "json", "sarif"];
+    private static readonly string[] ValidFormats = ["text", "json", "sarif", "html"];
 
     public static ParseResult<CliOptions> Parse(string[] args)
     {
@@ -37,6 +38,7 @@ public static class ArgumentParser
             "check" => CliCommand.Check,
             "explain" => CliCommand.Explain,
             "rules" => CliCommand.Rules,
+            "baseline" => CliCommand.Baseline,
             "--version" or "-v" or "version" => CliCommand.Version,
             "--help" or "-h" or "help" => CliCommand.Help,
             _ => (CliCommand?)null,
@@ -51,6 +53,7 @@ public static class ArgumentParser
         var format = "text";
         string? output = null;
         string? configPath = null;
+        string? baselinePath = null;
         Severity? failOn = null;
         var noColor = false;
         var quiet = false;
@@ -67,6 +70,7 @@ public static class ArgumentParser
                 case "--select":
                 case "--ignore":
                 case "--config":
+                case "--baseline":
                     if (i + 1 >= args.Length)
                         return ParseResult<CliOptions>.Fail($"A opção {arg} exige um valor.");
                     var value = args[++i];
@@ -83,6 +87,9 @@ public static class ArgumentParser
                             break;
                         case "--config":
                             configPath = value;
+                            break;
+                        case "--baseline":
+                            baselinePath = value;
                             break;
                         case "--select":
                             select.AddRange(SplitList(value));
@@ -127,7 +134,7 @@ public static class ArgumentParser
 
         return ParseResult<CliOptions>.Ok(new CliOptions(
             command.Value, paths, format, output, failOn, noColor, quiet, explainRuleId,
-            select, ignore, configPath));
+            select, ignore, configPath, baselinePath));
     }
 
     private static IEnumerable<string> SplitList(string value) =>
@@ -143,5 +150,5 @@ public static class ArgumentParser
 
     private static ParseResult<CliOptions> Ok(CliCommand command) =>
         ParseResult<CliOptions>.Ok(new CliOptions(
-            command, [], "text", null, null, false, false, null, [], [], null));
+            command, [], "text", null, null, false, false, null, [], [], null, null));
 }

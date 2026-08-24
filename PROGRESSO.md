@@ -282,3 +282,62 @@ partir do host arm64; o que se perde é rodá-lo no runner para conferir, e o ca
 
 A verificação pós-publish também ficou mais firme no caminho: o limiar era "pelo menos 5
 regras", que passaria mesmo se o trimming removesse 55 das 60.
+
+## Baseline, relatório HTML e as seis regras que faltavam
+
+O catálogo fechou em **66 regras**, e o CLI ganhou os dois comandos que o spec previa e
+nunca existiram.
+
+### Linha de base
+
+`pp-lint baseline` grava os achados atuais; `--baseline` os esconde do relatório e do
+código de saída. É o que permite ligar o linter num app de anos sem parar o time.
+
+O índice de conformidade **não melhora**. Fosse o contrário, bastaria gerar uma linha de
+base para exibir 100% — a mesma aritmética que já havia corrigido o comportamento da
+supressão. A dívida continua visível; a linha de base só impede que ela pare o build.
+
+A assinatura de um achado não inclui a mensagem: se incluísse, melhorar o texto de uma
+regra faria centenas de achados já revisados voltarem como novos. Inclui a contagem, para
+que um quinto problema idêntico ao lado de quatro perdoados não passe despercebido.
+
+No app real: 303 achados em 262 posições, código de saída 1 para 0, e a conformidade
+seguindo em 99,1%.
+
+### Relatório HTML
+
+Autocontido — CSS e script embutidos, nenhuma requisição externa. Ele circula por anexo e
+pasta de rede, muitas vezes sem internet, e um relatório que depende de CDN chega quebrado
+justamente na reunião em que seria usado.
+
+O filtro por severidade e a busca são a única razão de ser HTML e não texto: com trezentos
+achados, isolar os erros ou procurar um controle pelo nome é o que torna a lista
+utilizável. Sem script o arquivo continua legível, só perde o filtro.
+
+### As seis regras que estavam adiadas
+
+Todas dependiam de formato que eu não tinha visto. Fui buscar os artefatos antes de
+escrever qualquer regra, e todo formato veio de fonte verificável:
+
+| Regra | Como o formato foi confirmado |
+|---|---|
+| FL212 | Documentação da linguagem de definição de fluxo: `runtimeConfiguration.staticResult.staticResultOptions` |
+| FL220, FL221 | Quatro consultas reais em fluxos da PnP, com `$filter` e `$top` como chaves de `parameters` |
+| FL224 | Nove chamadas de conector dentro de laço, em quatro fluxos publicados |
+| DUP306 | `Connections/Connections.json` de um app real: `dataSources` e `dependents` |
+| NM014 | `CustomProperties` de um componente publicado, com `cmpHeaderHeight` fora de PascalCase |
+
+E o artefato real cobrou o preço de sempre. Ao ler `inputs.host.operationId`, o extractor
+quebrou com exceção não tratada: num `Compose`, `inputs` não é objeto — é o valor composto,
+que pode ser texto, número ou array. Perguntar por uma propriedade ali dentro lança, e a
+exceção derrubava a análise do artefato inteiro. Um fixture sintético teria usado sempre a
+forma de conector, e o defeito só apareceria no primeiro usuário.
+
+Achados no fixture novo, todos conferidos no JSON: cinco conectores dentro de laço, duas
+consultas sem `$top`, e silêncio da FL220 porque as quatro consultas têm `$filter`.
+
+### Fixture novo
+
+`tests/fixtures/solucao-fluxos/` — três cloud flows reais da PnP (MIT), com 56 ações entre
+eles: laços com conector dentro, consultas ao SharePoint e ao Dataverse, e uma cadeia de
+tratamento de erro.
