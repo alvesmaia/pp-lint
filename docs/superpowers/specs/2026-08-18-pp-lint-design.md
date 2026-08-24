@@ -161,7 +161,7 @@ morto, `PERF` performance e delegação, `SEC` segurança, `SOL` solução/ALM.
 | NM011 | Prefixo do controle não corresponde ao template | Warn |
 | NM012 | Tela fora do padrão (`scrPascalCase`) | Warn |
 | NM013 | Componente canvas fora do padrão (`cmpPascalCase`) | Warn |
-| NM014 | Propriedade customizada de componente fora do padrão — **adiada**: o IR não distingue propriedade customizada de embutida | — |
+| NM014 | Propriedade customizada de componente fora de PascalCase | Info |
 | NM020 | Coluna Dataverse sem o prefixo do publisher da solução | Error |
 | NM021 | `SchemaName` de coluna Dataverse fora de PascalCase | Warn |
 | NM022 | Coluna SharePoint com espaço ou acento — **coberta pela NM040**, que julga o nome de toda coluna criada | — |
@@ -210,9 +210,9 @@ convenção é hardcoded em C#.
 | FL203 | Ação cujo output nunca é consumido | Warn |
 | FL210 | Fluxo sem nenhum tratamento de erro | Error |
 | FL211 | Escopo de catch que não relata a falha | Warn |
-| FL212 | Ação desabilitada deixada no fluxo | Info |
-| FL220 | Consulta sem `$filter`, com filtragem feita depois em condição | Warn |
-| FL221 | `Get items` sem `Top Count` nem paginação | Warn |
+| FL212 | Ação desabilitada (resultado estático ligado) | Warn |
+| FL220 | Consulta que lista registros sem `$filter` | Warn |
+| FL221 | Consulta que lista registros sem `$top` | Info |
 | FL222 | `Apply to each` aninhado | Warn |
 | FL223 | `Apply to each` com concorrência desligada sobre volume alto | Info |
 | FL224 | Chamada de conector dentro de loop que caberia em lote | Warn |
@@ -230,7 +230,7 @@ convenção é hardcoded em C#.
 | DUP303 | Controle nunca referenciado e invisível — código morto | Warn |
 | DUP304 | Tela inalcançável (nenhum `Navigate` aponta para ela) | Warn |
 | DUP305 | Data source declarada e nunca usada | Warn |
-| DUP306 | Conexão declarada e nunca usada — **adiada**: o IR não extrai conexões, e o conector já chega pela DUP305 | — |
+| DUP306 | Conexão declarada e nunca usada | Warn |
 | PERF401 | Função não delegável sobre data source delegável | Error |
 | PERF402 | `App.OnStart` com chamadas sequenciais que caberiam em `Concurrent` | Warn |
 | PERF403 | `App.OnStart` acima do orçamento de operações | Warn |

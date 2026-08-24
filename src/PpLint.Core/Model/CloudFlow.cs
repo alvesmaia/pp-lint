@@ -42,6 +42,26 @@ public sealed class FlowAction
     /// </summary>
     public int? ConcurrencyDegree { get; init; }
 
+    /// <summary>
+    /// A operação do conector — GetItems, ListRecords, SendEmailV2. É o que
+    /// identifica o que a ação realmente faz: o tipo diz apenas
+    /// "OpenApiConnection" para toda chamada de conector.
+    /// </summary>
+    public string? OperationId { get; init; }
+
+    /// <summary>
+    /// Os nomes dos parâmetros passados à operação — dataset, table, $filter,
+    /// $top. Só os nomes: o valor costuma trazer expressão do usuário, e as
+    /// regras que os consultam querem saber o que foi informado, não o quê.
+    /// </summary>
+    public IReadOnlyList<string> ParameterNames { get; init; } = [];
+
+    /// <summary>
+    /// A ação está com resultado estático ligado — o que o designer chama de
+    /// desabilitar. Ela devolve saída simulada sem executar.
+    /// </summary>
+    public bool StaticResultEnabled { get; init; }
+
     /// <summary>Todas as strings encontradas nos inputs da ação, onde vivem as expressões @{...}.</summary>
     public List<string> Expressions { get; } = [];
 
