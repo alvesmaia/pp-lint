@@ -168,6 +168,7 @@ public static class Program
         {
             "json" => JsonReporter.Render(exibidos),
             "sarif" => SarifReporter.Render(exibidos),
+            "html" => HtmlReporter.Render(exibidos),
             _ => TextReporter.Render(exibidos, useColor, options.Quiet),
         };
 
@@ -361,7 +362,7 @@ public static class Program
           --baseline <arquivo>                  linha de base a aplicar (padrão: pp-lint-baseline.json)
           --select <IDs>                        só estas regras (ID ou categoria, separados por vírgula)
           --ignore <IDs>                        nunca estas regras; vence o --select
-          --format <text|json|sarif>            formato de saída (padrão: text)
+          --format <text|json|sarif|html>       formato de saída (padrão: text)
           --output <arquivo>                    grava a saída em arquivo
           --fail-on <error|warning|info>        severidade que retorna código 1 (padrão: error)
           --no-color                            desativa cores

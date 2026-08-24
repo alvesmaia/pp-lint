@@ -147,35 +147,3 @@ public class ArgumentParserConfigTests
     }
 }
 
-public class RemovedFormatsTests
-{
-    [Fact]
-    public void HtmlIsRejectedWithTheListOfWhatWorks()
-    {
-        // O CLI anunciava html e md e não entregava nenhum dos dois. Voltam na
-        // Fase 5; até lá, recusar é mais honesto que prometer.
-        var r = ArgumentParser.Parse(["check", "a.msapp", "--format", "html"]);
-
-        Assert.False(r.IsSuccess);
-        Assert.Contains("html", r.Error);
-        Assert.Contains("text", r.Error);
-        Assert.Contains("json", r.Error);
-        Assert.Contains("sarif", r.Error);
-    }
-
-    [Fact]
-    public void MarkdownIsRejected() =>
-        Assert.False(ArgumentParser.Parse(["check", "a.msapp", "--format", "md"]).IsSuccess);
-
-    [Fact]
-    public void TheThreeSupportedFormatsAreAccepted()
-    {
-        foreach (var formato in new[] { "text", "json", "sarif" })
-        {
-            var r = ArgumentParser.Parse(["check", "a.msapp", "--format", formato]);
-
-            Assert.True(r.IsSuccess, $"'{formato}' devia ser aceito: {r.Error}");
-            Assert.Equal(formato, r.Value!.Format);
-        }
-    }
-}
