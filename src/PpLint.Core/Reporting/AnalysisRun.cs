@@ -31,6 +31,26 @@ public sealed record AnalysisRun(
     public IReadOnlyList<RuleTally> AllTallies { get; } =
         Artifacts.SelectMany(a => a.Tallies).ToList();
 
+    /// <summary>
+    /// A mesma execução mostrando só os achados indicados, com as contagens
+    /// intactas.
+    ///
+    /// É o que a linha de base precisa: esconder do relatório o achado antigo
+    /// sem tirá-lo do índice. Recalcular a conformidade sobre o que sobrou faria
+    /// a nota subir por decreto — bastaria gerar uma linha de base para exibir
+    /// 100%.
+    /// </summary>
+    public AnalysisRun ShowingOnly(IReadOnlyList<Diagnostic> visiveis)
+    {
+        var conjunto = visiveis.ToHashSet();
+
+        var filtrados = Artifacts
+            .Select(a => a with { Diagnostics = a.Diagnostics.Where(conjunto.Contains).ToList() })
+            .ToList();
+
+        return new AnalysisRun(filtrados, Compliance, Elapsed);
+    }
+
     public static AnalysisRun From(
         IEnumerable<(string Path, LintResult Result)> results, TimeSpan elapsed)
     {

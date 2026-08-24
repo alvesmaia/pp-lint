@@ -382,8 +382,16 @@ aparece, inclusive com `--quiet`.
   seguintes só falham em violação nova. É o que permite adotar o linter num app
   legado sem parar o time.
 
-Regras suprimidas saem do cálculo do índice (numerador e denominador), para que
-suprimir não infle artificialmente a conformidade.
+Alvo suprimido **continua contando como violação** no índice. Tirá-lo dos dois lados da
+fração faria a conformidade subir — `(v-1)/(t-1) > v/t` sempre que `v < t` — e bastaria
+silenciar tudo para exibir 100%. Suprimir tira o achado do relatório, não o débito da nota.
+
+A linha de base segue o mesmo princípio: decide o que aparece e o que quebra o build,
+nunca o índice.
+
+> Correção de rota: a primeira versão deste spec dizia o contrário — que o alvo suprimido
+> saía do numerador e do denominador "para que suprimir não infle a conformidade". A
+> aritmética mostra que é justamente o oposto.
 
 ## 12. Testes
 
